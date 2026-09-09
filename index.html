@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Squad Manager</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/badge.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+  <meta name="theme-color" content="#c2410c" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <link rel="stylesheet" href="./css/theme.css" />
+  <link rel="stylesheet" href="./css/app.css" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "vue": "https://esm.sh/vue@3.4.31",
+      "vue-router": "https://esm.sh/vue-router@4.4.0?deps=vue@3.4.31",
+      "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.44.4",
+      "chart.js": "https://esm.sh/chart.js@4.4.3"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
