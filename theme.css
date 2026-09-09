@@ -1,0 +1,26 @@
+/* Club theme: orange, applied on top of Pico CSS's variables. */
+:root {
+  --club-orange: #f97316;
+  --club-orange-dark: #c2410c;
+  --club-orange-light: #ffedd5;
+  --club-ink: #1c1917;
+
+  --pico-primary: var(--club-orange-dark);
+  --pico-primary-background: var(--club-orange-dark);
+  --pico-primary-hover: #9a3412;
+  --pico-primary-hover-background: #9a3412;
+  --pico-primary-focus: rgba(249, 115, 22, 0.35);
+  --pico-primary-inverse: #fff;
+}
+
+/* Accent surfaces that don't need to pass text-contrast rules */
+.club-accent {
+  background: var(--club-orange);
+  color: #fff;
+}
+
+.club-header-band {
+  background: linear-gradient(90deg, var(--club-orange-dark), var(--club-orange));
+  color: #fff;
+  border-radius: 0.5rem;
+}

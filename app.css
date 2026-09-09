@@ -1,0 +1,69 @@
+/* Mobile-first layout + print styles. Pico CSS handles base typography/forms. */
+
+body {
+  padding-bottom: 4.5rem; /* room for bottom nav on phones */
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+.app-header img.badge { height: 2.25rem; width: 2.25rem; }
+.app-header .club-title { font-weight: 700; margin: 0; line-height: 1.1; }
+.app-header .club-title small { display: block; font-weight: 400; opacity: 0.85; font-size: 0.75rem; }
+
+/* Bottom nav bar for phones; becomes a top nav on wide screens */
+.bottom-nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--pico-card-background-color, #fff);
+  border-top: 1px solid var(--pico-muted-border-color);
+  padding: 0.4rem 0;
+  z-index: 20;
+}
+.bottom-nav a {
+  font-size: 0.7rem;
+  text-decoration: none;
+  text-align: center;
+  color: var(--pico-color);
+  flex: 1;
+}
+.bottom-nav a.router-link-active { color: var(--club-orange-dark); font-weight: 700; }
+
+@media (min-width: 900px) {
+  .bottom-nav { display: none; }
+  .top-nav { display: flex; gap: 1.25rem; align-items: center; }
+}
+@media (max-width: 899px) {
+  .top-nav { display: none; }
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.player-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
+.player-row .num { display: inline-block; min-width: 1.75rem; text-align: center; font-weight: 700; color: var(--club-orange-dark); }
+.tag { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.72rem; background: var(--club-orange-light); color: var(--club-orange-dark); }
+.tag.warn { background: #fee2e2; color: #991b1b; }
+.tag.ok { background: #dcfce7; color: #166534; }
+
+.matchday-columns { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 700px) {
+  .matchday-columns { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+
+/* ---------- Print (team sheet) ---------- */
+@media print {
+  .no-print { display: none !important; }
+  body { padding-bottom: 0; }
+  .team-sheet { color: #000; }
+  .club-header-band { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

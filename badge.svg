@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" role="img" aria-label="Club badge placeholder">
+  <path d="M50 2 L96 16 V58 C96 92 74 110 50 118 C26 110 4 92 4 58 V16 Z"
+        fill="#f97316" stroke="#c2410c" stroke-width="4"/>
+  <path d="M50 12 L86 24 V58 C86 84 68 99 50 106 C32 99 14 84 14 58 V24 Z"
+        fill="#ffedd5"/>
+  <circle cx="50" cy="55" r="20" fill="#fff" stroke="#1c1917" stroke-width="2"/>
+  <polygon points="50,42 60,50 56,62 44,62 40,50" fill="#1c1917"/>
+  <text x="50" y="98" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700"
+        font-size="14" fill="#c2410c">FC</text>
+</svg>
