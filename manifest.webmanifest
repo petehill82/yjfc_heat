@@ -1,0 +1,14 @@
+{
+    "name": "Squad Manager",
+    "short_name": "Squad",
+    "description": "Team sheets, fixtures and stats for the squad.",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#c2410c",
+    "icons": [
+        {"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"},
+        {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}
+    ]
+}
