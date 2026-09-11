@@ -42,7 +42,8 @@ export default {
     const upcoming = ref([]);
     const charts = {};
     const leaderboardCanvas = ref(null);
-    const minutesCanvas = ref(null);
+    const matchesCanvas = ref(null);
+    const potmCanvas = ref(null);
     const goalkeepingCanvas = ref(null);
     const homeAwayCanvas = ref(null);
 
@@ -77,16 +78,34 @@ export default {
       });
     }
 
-    function buildMinutes() {
-      const sorted = [...players.value].sort((a, b) => b.minutes_played - a.minutes_played);
-      charts.minutes?.destroy();
-      charts.minutes = new Chart(minutesCanvas.value, {
+    function buildMatchesPlayed() {
+      const sorted = [...players.value].sort((a, b) => b.apps - a.apps);
+      charts.matches?.destroy();
+      charts.matches = new Chart(matchesCanvas.value, {
         type: "bar",
         data: {
           labels: sorted.map((p) => `${p.first_name} ${p.last_name[0]}.`),
-          datasets: [{ label: "Minutes played", data: sorted.map((p) => p.minutes_played), backgroundColor: ORANGE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
+          datasets: [{ label: "Matches played", data: sorted.map((p) => p.apps), backgroundColor: ORANGE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
         options: { ...BASE_OPTS, indexAxis: "y", plugins: { ...BASE_OPTS.plugins, legend: { display: false } } },
+      });
+    }
+
+    function buildPotm() {
+      const sorted = [...players.value].sort((a, b) => b.potm_count - a.potm_count);
+      charts.potm?.destroy();
+      charts.potm = new Chart(potmCanvas.value, {
+        type: "bar",
+        data: {
+          labels: sorted.map((p) => `${p.first_name} ${p.last_name[0]}.`),
+          datasets: [{ label: "POTM awards", data: sorted.map((p) => p.potm_count), backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
+        },
+        options: {
+          ...BASE_OPTS,
+          indexAxis: "y",
+          plugins: { ...BASE_OPTS.plugins, legend: { display: false } },
+          scales: { ...BASE_OPTS.scales, x: { ...BASE_OPTS.scales.x, ticks: { ...BASE_OPTS.scales.x.ticks, stepSize: 1 } } },
+        },
       });
     }
 
@@ -134,7 +153,8 @@ export default {
       upcoming.value = await listUpcomingFixtures(5);
       await nextTick();
       buildLeaderboard();
-      buildMinutes();
+      buildMatchesPlayed();
+      buildPotm();
       buildGoalkeeping();
       buildHomeAway();
     }
@@ -143,7 +163,7 @@ export default {
     onMounted(load);
     onBeforeUnmount(destroyCharts);
 
-    return { players, teams, upcoming, totals, leaderboardCanvas, minutesCanvas, goalkeepingCanvas, homeAwayCanvas, store, currentSeason, GOOD, CRITICAL, NEUTRAL };
+    return { players, teams, upcoming, totals, leaderboardCanvas, matchesCanvas, potmCanvas, goalkeepingCanvas, homeAwayCanvas, store, currentSeason, GOOD, CRITICAL, NEUTRAL };
   },
   template: `
     <main class="container">
@@ -171,8 +191,12 @@ export default {
       <h3>Goals &amp; assists (top 8)</h3>
       <div style="height:280px;"><canvas ref="leaderboardCanvas"></canvas></div>
 
-      <h3>Minutes played (fairness check)</h3>
-      <div :style="{ height: Math.max(220, players.length * 22) + 'px' }"><canvas ref="minutesCanvas"></canvas></div>
+      <h3>Matches played (fairness check)</h3>
+      <div :style="{ height: Math.max(220, players.length * 22) + 'px' }"><canvas ref="matchesCanvas"></canvas></div>
+
+      <h3>Player of the Match (fairness check)</h3>
+      <div :style="{ height: Math.max(220, players.length * 22) + 'px' }"><canvas ref="potmCanvas"></canvas></div>
+      <p v-if="!players.some(p => p.potm_count > 0)" style="opacity:0.7;">No POTM awarded yet this season.</p>
 
       <h3>Minutes in goal</h3>
       <div style="height:220px;"><canvas ref="goalkeepingCanvas"></canvas></div>

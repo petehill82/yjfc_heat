@@ -79,7 +79,7 @@ export default {
       <table>
         <thead><tr><th>Name</th><th>Squad name</th><th>Start</th><th>End</th><th></th></tr></thead>
         <tbody>
-          <tr v-for="s in seasons" :key="s.id">
+          <tr v-for="s in seasons" :key="s.id" :class="{ current: s.is_current }">
             <td><input v-model="s.name" @change="saveSeason(s)" style="width:8rem;" /></td>
             <td><input v-model="s.squad_name" @change="saveSeason(s)" style="width:10rem;" /></td>
             <td><input v-model="s.start_date" type="date" @change="saveSeason(s)" /></td>

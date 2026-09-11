@@ -2,6 +2,12 @@ import { ref, reactive, onMounted } from "vue";
 import { getFixture, updateFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
 
+// Current format: 7-a-side, 50-minute games. Fair-minutes policy splits the
+// total pitch-minutes on offer evenly across everyone selected, as a default
+// starting point for the minutes-played column (coaches can still edit it).
+const GAME_MINUTES = 50;
+const PLAYERS_ON_PITCH = 7;
+
 export default {
   name: "MatchStatsView",
   props: { id: String },
@@ -17,7 +23,8 @@ export default {
       const apps = (await listAppearancesForFixture(props.id)).filter((a) => a.selected);
       apps.sort((a, b) => (a.starting === b.starting ? 0 : a.starting ? -1 : 1));
       order.value = apps.map((a) => a.player_id);
-      for (const a of apps) rows[a.player_id] = { ...a };
+      const fairShare = apps.length ? Math.round((GAME_MINUTES * PLAYERS_ON_PITCH) / apps.length) : 0;
+      for (const a of apps) rows[a.player_id] = { ...a, minutes_played: a.minutes_played || fairShare };
     }
 
     function playerName(pid) {

@@ -9,7 +9,7 @@ export default {
     const search = ref("");
     const showArchived = ref(false);
     const showAdd = ref(false);
-    const newPlayer = ref({ first_name: "", last_name: "", squad_number: null, year_of_birth: null, preferred_positions: "" });
+    const newPlayer = ref({ first_name: "", last_name: "", squad_number: null, ability: null, year_of_birth: null, preferred_positions: "" });
     const error = ref("");
 
     async function load() {
@@ -30,13 +30,14 @@ export default {
         const payload = {
           ...newPlayer.value,
           squad_number: newPlayer.value.squad_number ? Number(newPlayer.value.squad_number) : null,
+          ability: newPlayer.value.ability ? Number(newPlayer.value.ability) : null,
           year_of_birth: newPlayer.value.year_of_birth ? Number(newPlayer.value.year_of_birth) : null,
           preferred_positions: newPlayer.value.preferred_positions
             ? newPlayer.value.preferred_positions.split(",").map((s) => s.trim()).filter(Boolean)
             : [],
         };
         await createPlayer(payload);
-        newPlayer.value = { first_name: "", last_name: "", squad_number: null, year_of_birth: null, preferred_positions: "" };
+        newPlayer.value = { first_name: "", last_name: "", squad_number: null, ability: null, year_of_birth: null, preferred_positions: "" };
         showAdd.value = false;
         await load();
       } catch (e) {
@@ -69,6 +70,7 @@ export default {
             <input v-model="newPlayer.first_name" placeholder="First name" required />
             <input v-model="newPlayer.last_name" placeholder="Last name" required />
             <input v-model="newPlayer.squad_number" type="number" placeholder="Squad no." />
+            <input v-model="newPlayer.ability" type="number" min="1" max="10" placeholder="Ability (1-10)" />
             <input v-model="newPlayer.year_of_birth" type="number" placeholder="Year of birth" />
             <input v-model="newPlayer.preferred_positions" placeholder="Positions (comma sep.)" />
           </div>

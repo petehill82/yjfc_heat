@@ -25,6 +25,7 @@ export default {
         <router-link to="/">Dashboard</router-link>
         <router-link to="/players">Players</router-link>
         <router-link to="/fixtures">Fixtures</router-link>
+        <router-link to="/results">Results</router-link>
         <router-link to="/availability">Availability</router-link>
         <router-link to="/attendance">Attendance</router-link>
         <router-link v-if="isAdmin()" to="/admin">Admin</router-link>

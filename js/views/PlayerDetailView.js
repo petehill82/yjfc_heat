@@ -35,6 +35,7 @@ export default {
         const patch = {
           ...draft.value,
           squad_number: draft.value.squad_number ? Number(draft.value.squad_number) : null,
+          ability: draft.value.ability ? Number(draft.value.ability) : null,
           year_of_birth: draft.value.year_of_birth ? Number(draft.value.year_of_birth) : null,
           preferred_positions: draft.value.preferred_positions
             ? draft.value.preferred_positions.split(",").map((s) => s.trim()).filter(Boolean)
@@ -69,6 +70,7 @@ export default {
           <input v-model="draft.first_name" placeholder="First name" required />
           <input v-model="draft.last_name" placeholder="Last name" required />
           <input v-model="draft.squad_number" type="number" placeholder="Squad no." />
+          <input v-model="draft.ability" type="number" min="1" max="10" placeholder="Ability (1-10)" />
           <input v-model="draft.year_of_birth" type="number" placeholder="Year of birth" />
           <input v-model="draft.preferred_positions" placeholder="Positions (comma sep.)" />
         </div>

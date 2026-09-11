@@ -61,6 +61,11 @@ export default {
   template: `
     <main class="container">
       <h2>Training attendance</h2>
+      <p style="font-size:0.85rem; opacity:0.7;">
+        For training sessions only - sessions are added manually below and aren't linked to fixtures.
+        For match-day squads, see <router-link to="/fixtures">Fixtures</router-link> and
+        <router-link to="/availability">Availability</router-link>.
+      </p>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <input v-model="newDate" type="date" />
         <button style="width:auto;" @click="addSession">+ New session</button>

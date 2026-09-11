@@ -1,9 +1,26 @@
-/* Club theme: orange, applied on top of Pico CSS's variables. */
+/* Club theme: grassroots-football identity on top of Pico CSS's variables.
+   --club-orange / --club-orange-dark stay coach-editable (Admin -> Club
+   branding); everything else is the fixed "Squad Manager" visual identity. */
 :root {
+  /* Brand (club-configurable) */
   --club-orange: #f97316;
   --club-orange-dark: #c2410c;
   --club-orange-light: #ffedd5;
-  --club-ink: #1c1917;
+
+  /* Fixed identity tokens */
+  --pitch-green-dark: #0d3b26;
+  --pitch-green: #1f6f42;
+  --chalk: #f6f4ee;
+  --ink: #17140f;
+  --ink-soft: #55534c;
+  --line: rgba(23, 20, 15, 0.14);
+
+  --status-good: #1a7431;
+  --status-good-bg: #e3f3e6;
+  --status-warn: #b3261e;
+  --status-warn-bg: #fbe6e4;
+
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
 
   --pico-primary: var(--club-orange-dark);
   --pico-primary-background: var(--club-orange-dark);
@@ -11,7 +28,40 @@
   --pico-primary-hover-background: #9a3412;
   --pico-primary-focus: rgba(249, 115, 22, 0.35);
   --pico-primary-inverse: #fff;
+
+  --pico-background-color: var(--chalk);
+  --pico-color: var(--ink);
+  --pico-muted-color: var(--ink-soft);
+  --pico-muted-border-color: var(--line);
+  --pico-card-background-color: #fff;
+  --pico-card-border-color: var(--line);
+  --pico-card-sectioning-background-color: #fff;
+  --pico-card-box-shadow: none;
+  --pico-h1-color: var(--ink);
+  --pico-h2-color: var(--ink);
+  --pico-h3-color: var(--ink);
 }
+
+/* Direct overrides (kept alongside the --pico-* vars above in case a Pico
+   version doesn't expose one of them under the name we expect). */
+body { background: var(--chalk); color: var(--ink); }
+
+h1, h2, h3, .club-title, .num, .scoreline, button, [role="button"], .top-nav a, .bottom-nav a {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+h1, h2, h3 { font-weight: 600; }
+
+/* Cards: flat surface + a coloured top edge carries hierarchy/status,
+   replacing the "same soft shadow on every card" default. */
+article {
+  border-radius: 0.25rem;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--club-orange);
+  box-shadow: none;
+  background: #fff;
+}
+article.pitch { border-top-color: var(--pitch-green); }
 
 /* Accent surfaces that don't need to pass text-contrast rules */
 .club-accent {
@@ -19,8 +69,61 @@
   color: #fff;
 }
 
-.club-header-band {
-  background: linear-gradient(90deg, var(--club-orange-dark), var(--club-orange));
+/* Header band: the one hero moment, repeated site-wide as the brand anchor */
+.club-header-band, .app-header {
+  background: linear-gradient(115deg, var(--pitch-green-dark) 0%, var(--pitch-green) 100%);
   color: #fff;
-  border-radius: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0;
 }
+.club-header-band { border-radius: 0.4rem; }
+.club-header-band::after, .app-header::after {
+  content: "";
+  position: absolute;
+  right: -3.5rem;
+  top: 50%;
+  width: 8.5rem;
+  height: 8.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.app-header .club-title, .app-header .club-title small, .app-header .top-nav a {
+  color: #fff;
+}
+.app-header .top-nav a.router-link-active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-weight: 600;
+}
+
+/* Squad-number badge: the recurring identity motif - reused wherever a
+   player appears (roster, team picker, team sheet, match stats). */
+.num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--club-orange-dark);
+  color: var(--club-orange-dark);
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* Scoreboard treatment for played fixtures */
+.scoreline {
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0.25rem 0;
+}
+.scoreline .vs { color: var(--ink-soft); padding: 0 0.35rem; font-weight: 400; }
+
+/* Table row highlight for the current season (Admin) */
+tr.current td { background: var(--club-orange-light); }

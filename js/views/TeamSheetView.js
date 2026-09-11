@@ -14,11 +14,10 @@ export default {
     async function load() {
       fixture.value = await getFixture(props.id);
       const apps = await listAppearancesForFixture(props.id);
-      appearances.value = apps.filter((a) => a.selected);
+      appearances.value = apps
+        .filter((a) => a.selected)
+        .sort((a, b) => playerName(a).localeCompare(playerName(b)));
     }
-
-    const starters = computed(() => appearances.value.filter((a) => a.starting));
-    const subs = computed(() => appearances.value.filter((a) => !a.starting));
 
     function playerName(a) {
       return `${a.players?.first_name ?? ""} ${a.players?.last_name ?? ""}`.trim();
@@ -30,12 +29,10 @@ export default {
       const lines = [
         `${squad} vs ${f.opponent}${f.team_name ? " (" + f.team_name + ")" : ""}`,
         `${f.match_date} ${f.kickoff || ""} - ${f.home_away === "home" ? "Home" : "Away"}${f.venue ? " @ " + f.venue : ""}`,
+        ...(f.coaches?.length ? [`Coaches: ${f.coaches.join(", ")}`] : []),
         "",
-        "Starting XI:",
-        ...starters.value.map((a) => `${a.shirt_number ?? "-"} ${playerName(a)}${a.position ? " (" + a.position + ")" : ""}`),
-        "",
-        "Subs:",
-        ...subs.value.map((a) => `${a.shirt_number ?? "-"} ${playerName(a)}`),
+        "Squad:",
+        ...appearances.value.map((a) => playerName(a)),
       ];
       return lines.join("\n");
     }
@@ -53,7 +50,7 @@ export default {
     function printSheet() { window.print(); }
 
     onMounted(load);
-    return { fixture, starters, subs, playerName, share, printSheet, shareStatus, store };
+    return { fixture, appearances, playerName, share, printSheet, shareStatus, store };
   },
   template: `
     <main class="container team-sheet" v-if="fixture">
@@ -67,28 +64,15 @@ export default {
             <span v-if="fixture.team_name">({{ fixture.team_name }})</span></h3>
           <p style="margin:0;">{{ fixture.match_date }} {{ fixture.kickoff }} &middot; {{ fixture.home_away === 'home' ? 'Home' : 'Away' }}
              <span v-if="fixture.venue">&middot; {{ fixture.venue }}</span></p>
+          <p v-if="(fixture.coaches || []).length" style="margin:0;">Coaches: {{ fixture.coaches.join(', ') }}</p>
         </div>
       </header>
 
-      <h4>Starting XI</h4>
-      <table>
-        <thead><tr><th>No.</th><th>Player</th><th>Position</th></tr></thead>
-        <tbody>
-          <tr v-for="a in starters" :key="a.player_id">
-            <td>{{ a.shirt_number ?? '-' }}</td><td>{{ playerName(a) }}</td><td>{{ a.position }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h4>Substitutes</h4>
-      <table>
-        <thead><tr><th>No.</th><th>Player</th></tr></thead>
-        <tbody>
-          <tr v-for="a in subs" :key="a.player_id">
-            <td>{{ a.shirt_number ?? '-' }}</td><td>{{ playerName(a) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <h4>Squad</h4>
+      <ul>
+        <li v-for="a in appearances" :key="a.player_id">{{ playerName(a) }}</li>
+      </ul>
+      <p v-if="!appearances.length">No squad selected yet.</p>
 
       <div class="no-print" style="display:flex; gap:0.5rem; margin-top:1rem;">
         <button @click="printSheet">Print / Save as PDF</button>

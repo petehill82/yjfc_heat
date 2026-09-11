@@ -1,4 +1,11 @@
 import { supabase } from "../supabase.js";
+import { formatTime } from "../lib/format.js";
+
+// Postgres returns "time" columns as "HH:MM:SS" - trim to "HH:MM" everywhere
+// a fixture is read, so no view has to remember to do it.
+function trimKickoff(row) {
+  return row ? { ...row, kickoff: formatTime(row.kickoff) } : row;
+}
 
 export async function listFixtures({ seasonId = null, status = null } = {}) {
   let q = supabase.from("fixtures").select("*").order("match_date", { ascending: true });
@@ -6,13 +13,13 @@ export async function listFixtures({ seasonId = null, status = null } = {}) {
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
   if (error) throw error;
-  return data;
+  return data.map(trimKickoff);
 }
 
 export async function getFixture(id) {
   const { data, error } = await supabase.from("fixtures").select("*").eq("id", id).single();
   if (error) throw error;
-  return data;
+  return trimKickoff(data);
 }
 
 // All fixtures sharing a date ("matchday"), e.g. when the squad is split into
@@ -24,7 +31,7 @@ export async function listFixturesOnDate(matchDate) {
     .eq("match_date", matchDate)
     .order("kickoff", { ascending: true });
   if (error) throw error;
-  return data;
+  return data.map(trimKickoff);
 }
 
 export async function listUpcomingFixtures(limit = 5) {
@@ -36,19 +43,28 @@ export async function listUpcomingFixtures(limit = 5) {
     .order("match_date", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return data;
+  return data.map(trimKickoff);
 }
 
 export async function createFixture(fixture) {
   const { data, error } = await supabase.from("fixtures").insert(fixture).select().single();
   if (error) throw error;
-  return data;
+  return trimKickoff(data);
+}
+
+// Bulk insert - used by the fixtures importer, which may turn each imported
+// row into several match rows (one per our-team) in a single call.
+export async function createFixturesBulk(fixtures) {
+  if (!fixtures.length) return [];
+  const { data, error } = await supabase.from("fixtures").insert(fixtures).select();
+  if (error) throw error;
+  return data.map(trimKickoff);
 }
 
 export async function updateFixture(id, patch) {
   const { data, error } = await supabase.from("fixtures").update(patch).eq("id", id).select().single();
   if (error) throw error;
-  return data;
+  return trimKickoff(data);
 }
 
 export async function deleteFixture(id) {

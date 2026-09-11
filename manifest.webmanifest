@@ -1,6 +1,6 @@
 {
-    "name": "Squad Manager",
-    "short_name": "Squad",
+    "name": "YJFC U10s",
+    "short_name": "YJFC U10s",
     "description": "Team sheets, fixtures and stats for the squad.",
     "start_url": "./index.html",
     "scope": "./",

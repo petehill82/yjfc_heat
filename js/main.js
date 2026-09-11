@@ -9,8 +9,10 @@ import DashboardView from "./views/DashboardView.js";
 import PlayersView from "./views/PlayersView.js";
 import PlayerDetailView from "./views/PlayerDetailView.js";
 import FixturesView from "./views/FixturesView.js";
+import ResultsView from "./views/ResultsView.js";
 import MatchdayView from "./views/MatchdayView.js";
 import TeamSheetView from "./views/TeamSheetView.js";
+import DayTeamSheetView from "./views/DayTeamSheetView.js";
 import MatchStatsView from "./views/MatchStatsView.js";
 import AvailabilityView from "./views/AvailabilityView.js";
 import AttendanceView from "./views/AttendanceView.js";
@@ -22,8 +24,10 @@ const routes = [
   { path: "/players", name: "players", component: PlayersView },
   { path: "/players/:id", name: "player-detail", component: PlayerDetailView, props: true },
   { path: "/fixtures", name: "fixtures", component: FixturesView },
+  { path: "/results", name: "results", component: ResultsView },
   { path: "/matchday/:date", name: "matchday", component: MatchdayView, props: true },
   { path: "/team-sheet/:id", name: "team-sheet", component: TeamSheetView, props: true },
+  { path: "/team-sheet-day/:date", name: "team-sheet-day", component: DayTeamSheetView, props: true },
   { path: "/match-stats/:id", name: "match-stats", component: MatchStatsView, props: true },
   { path: "/availability", name: "availability", component: AvailabilityView },
   { path: "/attendance", name: "attendance", component: AttendanceView },

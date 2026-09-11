@@ -49,11 +49,11 @@ body {
   margin: 1rem 0;
 }
 
-.player-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
-.player-row .num { display: inline-block; min-width: 1.75rem; text-align: center; font-weight: 700; color: var(--club-orange-dark); }
-.tag { display: inline-block; padding: 0.05rem 0.5rem; border-radius: 999px; font-size: 0.72rem; background: var(--club-orange-light); color: var(--club-orange-dark); }
-.tag.warn { background: #fee2e2; color: #991b1b; }
-.tag.ok { background: #dcfce7; color: #166534; }
+.player-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); }
+.player-row:last-child { border-bottom: none; }
+.tag { display: inline-block; padding: 0.05rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: var(--club-orange-light); color: var(--club-orange-dark); }
+.tag.warn { background: var(--status-warn-bg); color: var(--status-warn); }
+.tag.ok { background: var(--status-good-bg); color: var(--status-good); }
 
 .matchday-columns { display: grid; gap: 1rem; grid-template-columns: 1fr; }
 @media (min-width: 700px) {
@@ -66,4 +66,5 @@ body {
   body { padding-bottom: 0; }
   .team-sheet { color: #000; }
   .club-header-band { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .day-sheet-match { break-inside: avoid; }
 }

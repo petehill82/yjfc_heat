@@ -34,25 +34,35 @@ export default {
       }
     }
 
-    // players selected on more than one fixture today
-    const duplicatesByFixture = computed(() => {
-      const countByPlayer = {};
+    // Players selected on more than one fixture today - shown as a helpful
+    // "also playing for X" note, not a warning (playing twice is allowed).
+    const otherMatchesByFixture = computed(() => {
+      const label = (f) => f.team_name || f.opponent;
+      const matchesByPlayer = {};
       for (const f of fixtures.value) {
         const rows = rowsByFixture[f.id] || {};
         for (const [pid, row] of Object.entries(rows)) {
-          if (row.selected) countByPlayer[pid] = (countByPlayer[pid] || 0) + 1;
+          if (row.selected) (matchesByPlayer[pid] ||= []).push(f);
         }
       }
       const result = {};
       for (const f of fixtures.value) {
         const rows = rowsByFixture[f.id] || {};
-        const dup = new Set();
+        const others = {};
         for (const [pid, row] of Object.entries(rows)) {
-          if (row.selected && countByPlayer[pid] > 1) dup.add(pid);
+          if (!row.selected) continue;
+          const rest = (matchesByPlayer[pid] || []).filter((other) => other.id !== f.id);
+          if (rest.length) others[pid] = rest.map(label);
         }
-        result[f.id] = dup;
+        result[f.id] = others;
       }
       return result;
+    });
+
+    // Active-roster players not ticked as selected on any of today's fixtures -
+    // the "did I miss anyone" check.
+    const unselectedPlayers = computed(() => {
+      return players.value.filter((p) => !fixtures.value.some((f) => (rowsByFixture[f.id] || {})[p.id]?.selected));
     });
 
     async function onChange(fixtureId, playerId, patch) {
@@ -69,7 +79,7 @@ export default {
     }
 
     onMounted(load);
-    return { fixtures, players, availability, rowsByFixture, duplicatesByFixture, saving, savedAt, onChange };
+    return { fixtures, players, availability, rowsByFixture, otherMatchesByFixture, unselectedPlayers, saving, savedAt, onChange };
   },
   template: `
     <main class="container">
@@ -78,14 +88,23 @@ export default {
         Changes save automatically. <span v-if="saving">Saving...</span>
         <span v-else-if="savedAt">Saved {{ savedAt }}</span>
       </p>
-      <div class="matchday-columns">
+      <router-link :to="'/team-sheet-day/' + date"><button class="outline" style="width:auto;">Team sheet for the day</button></router-link>
+
+      <article v-if="unselectedPlayers.length" style="border-top-color: var(--status-warn); margin-top:1rem;">
+        <strong>{{ unselectedPlayers.length }} not selected for any fixture today</strong>
+        <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(p => p.first_name + ' ' + p.last_name).join(', ') }}</p>
+      </article>
+      <p v-else-if="fixtures.length" style="opacity:0.7; margin-top:1rem;">Everyone in the squad is selected for at least one fixture today.</p>
+
+      <div class="matchday-columns" style="margin-top:1rem;">
         <article v-for="f in fixtures" :key="f.id">
           <header><strong>{{ f.team_name || 'Team' }}</strong> vs {{ f.opponent }} <span class="tag">{{ f.home_away }}</span></header>
+          <p v-if="(f.coaches || []).length" style="font-size:0.85rem; opacity:0.75; margin:0.25rem 0;">Coaches: {{ f.coaches.join(', ') }}</p>
           <PlayerPicker
             :players="players"
             :rows="rowsByFixture[f.id] || {}"
             :availability="availability"
-            :duplicate-ids="duplicatesByFixture[f.id] || new Set()"
+            :other-matches="otherMatchesByFixture[f.id] || {}"
             @change="(pid, patch) => onChange(f.id, pid, patch)"
           />
         </article>
