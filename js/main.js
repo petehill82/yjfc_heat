@@ -14,6 +14,7 @@ import MatchdayView from "./views/MatchdayView.js";
 import TeamSheetView from "./views/TeamSheetView.js";
 import DayTeamSheetView from "./views/DayTeamSheetView.js";
 import MatchStatsView from "./views/MatchStatsView.js";
+import LiveMatchView from "./views/LiveMatchView.js";
 import AvailabilityView from "./views/AvailabilityView.js";
 import AttendanceView from "./views/AttendanceView.js";
 import AdminView from "./views/AdminView.js";
@@ -29,6 +30,7 @@ const routes = [
   { path: "/team-sheet/:id", name: "team-sheet", component: TeamSheetView, props: true },
   { path: "/team-sheet-day/:date", name: "team-sheet-day", component: DayTeamSheetView, props: true },
   { path: "/match-stats/:id", name: "match-stats", component: MatchStatsView, props: true },
+  { path: "/live/:id", name: "live-match", component: LiveMatchView, props: true },
   { path: "/availability", name: "availability", component: AvailabilityView },
   { path: "/attendance", name: "attendance", component: AttendanceView },
   { path: "/admin", name: "admin", component: AdminView, meta: { adminOnly: true } },

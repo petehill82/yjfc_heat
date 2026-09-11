@@ -354,6 +354,7 @@ export default {
             <footer style="display:flex; gap:0.5rem; flex-wrap:wrap;">
               <router-link :to="'/matchday/' + f.match_date"><button class="outline" style="width:auto;">Pick team</button></router-link>
               <router-link :to="'/team-sheet/' + f.id"><button class="outline" style="width:auto;">Team sheet</button></router-link>
+              <router-link :to="'/live/' + f.id"><button class="outline" style="width:auto;">Live</button></router-link>
               <router-link :to="'/match-stats/' + f.id"><button class="outline" style="width:auto;">Stats</button></router-link>
               <button class="secondary" style="width:auto;" @click="startEdit(f)">Edit</button>
               <button class="secondary outline" style="width:auto;" @click="duplicateAsNewTeam(f)">+ Add team</button>
