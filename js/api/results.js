@@ -7,7 +7,8 @@ export async function listResults(seasonId) {
     .from("v_fixture_results")
     .select("*")
     .eq("status", "played")
-    .order("match_date", { ascending: false });
+    .order("match_date", { ascending: false })
+    .order("kickoff", { ascending: false });
   if (seasonId) q = q.eq("season_id", seasonId);
   const { data, error } = await q;
   if (error) throw error;

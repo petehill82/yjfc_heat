@@ -8,7 +8,10 @@ function trimKickoff(row) {
 }
 
 export async function listFixtures({ seasonId = null, status = null } = {}) {
-  let q = supabase.from("fixtures").select("*").order("match_date", { ascending: true });
+  let q = supabase.from("fixtures")
+    .select("*")
+    .order("match_date", { ascending: true })
+    .order("kickoff", { ascending: true });
   if (seasonId) q = q.eq("season_id", seasonId);
   if (status) q = q.eq("status", status);
   const { data, error } = await q;
@@ -41,6 +44,7 @@ export async function listUpcomingFixtures(limit = 5) {
     .select("*")
     .gte("match_date", today)
     .order("match_date", { ascending: true })
+    .order("kickoff", { ascending: true })
     .limit(limit);
   if (error) throw error;
   return data.map(trimKickoff);
