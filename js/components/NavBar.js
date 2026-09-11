@@ -23,6 +23,7 @@ export default {
       </div>
       <nav class="top-nav">
         <router-link to="/">Dashboard</router-link>
+        <router-link to="/today">Today</router-link>
         <router-link to="/players">Players</router-link>
         <router-link to="/fixtures">Fixtures</router-link>
         <router-link to="/results">Results</router-link>
@@ -34,6 +35,7 @@ export default {
     </header>
     <nav class="bottom-nav no-print">
       <router-link to="/">🏠<br>Home</router-link>
+      <router-link to="/today">⚽<br>Today</router-link>
       <router-link to="/players">👥<br>Players</router-link>
       <router-link to="/fixtures">📅<br>Fixtures</router-link>
       <router-link to="/availability">✅<br>Avail.</router-link>

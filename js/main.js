@@ -6,6 +6,7 @@ import NavBar from "./components/NavBar.js";
 
 import LoginView from "./views/LoginView.js";
 import DashboardView from "./views/DashboardView.js";
+import TodayView from "./views/TodayView.js";
 import PlayersView from "./views/PlayersView.js";
 import PlayerDetailView from "./views/PlayerDetailView.js";
 import FixturesView from "./views/FixturesView.js";
@@ -22,6 +23,7 @@ import AdminView from "./views/AdminView.js";
 const routes = [
   { path: "/login", name: "login", component: LoginView, meta: { public: true } },
   { path: "/", name: "dashboard", component: DashboardView },
+  { path: "/today", name: "today", component: TodayView },
   { path: "/players", name: "players", component: PlayersView },
   { path: "/players/:id", name: "player-detail", component: PlayerDetailView, props: true },
   { path: "/fixtures", name: "fixtures", component: FixturesView },

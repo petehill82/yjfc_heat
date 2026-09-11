@@ -2,6 +2,11 @@
    --club-orange / --club-orange-dark stay coach-editable (Admin -> Club
    branding); everything else is the fixed "Squad Manager" visual identity. */
 :root {
+  /* Fixed light theme only - stops phones in dark mode (Android's automatic
+     dark theme, in particular) from auto-inverting/recolouring the page,
+     which otherwise turns card backgrounds black with unreadable text. */
+  color-scheme: light;
+
   /* Brand (club-configurable) */
   --club-orange: #f97316;
   --club-orange-dark: #c2410c;
