@@ -10,7 +10,7 @@ export default {
   setup(props) {
     const fixtures = ref([]);
     const players = ref([]);
-    const squadByFixture = ref({}); // fixture_id -> [{ id, name }]
+    const squadByFixture = ref({}); // fixture_id -> [{ id, name, goals, assists, potm }]
     const shareStatus = ref("");
 
     async function load() {
@@ -21,7 +21,13 @@ export default {
         const apps = await listAppearancesForFixture(f.id);
         byFixture[f.id] = apps
           .filter((a) => a.selected)
-          .map((a) => ({ id: a.player_id, name: `${a.players?.first_name ?? ""} ${a.players?.last_name ?? ""}`.trim() }))
+          .map((a) => ({
+            id: a.player_id,
+            name: `${a.players?.first_name ?? ""} ${a.players?.last_name ?? ""}`.trim(),
+            goals: a.goals,
+            assists: a.assists,
+            potm: a.potm,
+          }))
           .sort((a, b) => a.name.localeCompare(b.name));
       }
       squadByFixture.value = byFixture;
@@ -61,10 +67,51 @@ export default {
       setTimeout(() => (shareStatus.value = ""), 4000);
     }
 
+    // WhatsApp-friendly results report - one played fixture per block, with
+    // score, scorers, assists and POTM. Only offered once something's played.
+    const playedFixtures = computed(() => fixtures.value.filter((f) => f.status === "played"));
+
+    function resultWord(us, them) {
+      if (us > them) return "Won";
+      if (us < them) return "Lost";
+      return "Drew";
+    }
+
+    function asResultsText() {
+      const lines = [`${clubName.value} - Results ${props.date}`, ""];
+      for (const f of playedFixtures.value) {
+        const us = f.our_score ?? 0;
+        const them = f.their_score ?? 0;
+        const squad = squadByFixture.value[f.id] || [];
+        lines.push(`${f.team_name || 'Team'} ${resultWord(us, them)} ${us}-${them} vs ${f.opponent} (${f.home_away === 'home' ? 'Home' : 'Away'})`);
+        const scorerLines = squad.filter((p) => p.goals > 0).map((p) => p.name + (p.goals > 1 ? ` x${p.goals}` : ""));
+        if (scorerLines.length) lines.push(`⚽ ${scorerLines.join(", ")}`);
+        const assistLines = squad.filter((p) => p.assists > 0).map((p) => p.name + (p.assists > 1 ? ` x${p.assists}` : ""));
+        if (assistLines.length) lines.push(`🅰️ ${assistLines.join(", ")}`);
+        const potm = squad.find((p) => p.potm);
+        if (potm) lines.push(`⭐ POTM: ${potm.name}`);
+        lines.push("");
+      }
+      return lines.join("\n");
+    }
+
+    async function shareResults() {
+      const text = asResultsText();
+      if (navigator.share) {
+        try { await navigator.share({ title: "Results", text }); return; } catch { /* user cancelled */ }
+      }
+      await navigator.clipboard.writeText(text);
+      shareStatus.value = "Copied to clipboard - paste into WhatsApp/email.";
+      setTimeout(() => (shareStatus.value = ""), 4000);
+    }
+
     function printSheet() { window.print(); }
 
     onMounted(load);
-    return { fixtures, squadByFixture, unselectedPlayers, clubName, share, printSheet, shareStatus };
+    return {
+      fixtures, squadByFixture, unselectedPlayers, clubName, playedFixtures,
+      share, shareResults, printSheet, shareStatus,
+    };
   },
   template: `
     <main class="container team-sheet">
@@ -100,9 +147,10 @@ export default {
         <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(p => p.first_name + ' ' + p.last_name).join(', ') }}</p>
       </article>
 
-      <div class="no-print" style="display:flex; gap:0.5rem; margin-top:1rem;">
-        <button @click="printSheet">Print / Save as PDF</button>
-        <button class="secondary" @click="share">Share</button>
+      <div class="no-print" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1rem;">
+        <button style="width:auto;" @click="printSheet">Print / Save as PDF</button>
+        <button class="secondary" style="width:auto;" @click="share">Share team sheet</button>
+        <button v-if="playedFixtures.length" class="secondary" style="width:auto;" @click="shareResults">Share results</button>
       </div>
       <p v-if="shareStatus" class="no-print">{{ shareStatus }}</p>
     </main>

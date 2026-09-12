@@ -1,6 +1,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { getFixture, updateFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
+import { store } from "../store.js";
 
 // Quick, thumb-friendly score/scorer/assist/POTM entry for use pitch-side on
 // a phone, mid-match. Deliberately narrow scope - minutes, ratings etc. stay
@@ -135,12 +136,53 @@ export default {
 
     const scorers = computed(() => order.value.filter((pid) => rows[pid].goals > 0));
 
+    // WhatsApp-friendly result report - score, scorers, assists, POTM.
+    const reportStatus = ref("");
+
+    function resultWord(us, them) {
+      if (us > them) return "Won";
+      if (us < them) return "Lost";
+      return "Drew";
+    }
+
+    function asReportText() {
+      const f = fixture.value;
+      const us = f.our_score ?? 0;
+      const them = f.their_score ?? 0;
+      const squad = store.seasons.find((s) => s.id === f.season_id)?.squad_name || "";
+      const teamLabel = `${squad}${f.team_name ? " (" + f.team_name + ")" : ""}`.trim() || "Us";
+      const lines = [
+        `${teamLabel} ${resultWord(us, them)} ${us}-${them} vs ${f.opponent}`,
+        `${f.match_date}${f.venue ? " @ " + f.venue : ""}`,
+        "",
+      ];
+      const scorerLines = order.value.filter((pid) => rows[pid].goals > 0)
+        .map((pid) => playerName(pid) + (rows[pid].goals > 1 ? ` x${rows[pid].goals}` : ""));
+      if (scorerLines.length) lines.push(`⚽ ${scorerLines.join(", ")}`);
+      const assistLines = order.value.filter((pid) => rows[pid].assists > 0)
+        .map((pid) => playerName(pid) + (rows[pid].assists > 1 ? ` x${rows[pid].assists}` : ""));
+      if (assistLines.length) lines.push(`🅰️ ${assistLines.join(", ")}`);
+      const potmPid = order.value.find((pid) => rows[pid].potm);
+      if (potmPid) lines.push(`⭐ POTM: ${playerName(potmPid)}`);
+      return lines.join("\n");
+    }
+
+    async function shareReport() {
+      const text = asReportText();
+      if (navigator.share) {
+        try { await navigator.share({ title: "Match report", text }); return; } catch { /* user cancelled */ }
+      }
+      await navigator.clipboard.writeText(text);
+      reportStatus.value = "Copied to clipboard - paste into WhatsApp.";
+      setTimeout(() => (reportStatus.value = ""), 4000);
+    }
+
     onMounted(load);
     return {
       fixture, rows, order, saving, savedAt, playerName, squadNum,
       step, pendingScorerPid, lastGoal, lastGoalLabel, scorers,
       startGoal, cancelGoal, pickScorer, finishGoal, addOppositionGoal, undoLastGoal,
-      setPotm, markFullTime,
+      setPotm, markFullTime, shareReport, reportStatus,
     };
   },
   template: `
@@ -210,8 +252,10 @@ export default {
 
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1rem;">
         <button v-if="fixture.status !== 'played'" type="button" class="outline" style="width:auto;" @click="markFullTime">Full time - mark as played</button>
+        <button type="button" class="outline" style="width:auto;" @click="shareReport">Share result</button>
         <router-link to="/fixtures"><button type="button" class="secondary" style="width:auto;">Back to fixtures</button></router-link>
       </div>
+      <p v-if="reportStatus" style="font-size:0.85rem;">{{ reportStatus }}</p>
     </main>
   `,
 };

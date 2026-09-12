@@ -8,6 +8,8 @@ export async function listResults(seasonId) {
     .select("*")
     .eq("status", "played")
     .order("match_date", { ascending: false })
+    .order("home_away", { ascending: true })
+    .order("opponent", { ascending: true })
     .order("kickoff", { ascending: false });
   if (seasonId) q = q.eq("season_id", seasonId);
   const { data, error } = await q;
