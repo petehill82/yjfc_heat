@@ -1,14 +1,17 @@
 import { ref, reactive, computed, onMounted } from "vue";
-import { listFixtures, createFixture, createFixturesBulk, updateFixture, deleteFixture } from "../api/fixtures.js";
+import { listFixtures, createFixture, createFixturesBulk, updateFixture, deleteFixture, setFixtureCoaches } from "../api/fixtures.js";
+import { listCoaches } from "../api/profiles.js";
 import { store, isAdmin, currentSeason } from "../store.js";
 import { parseDelimited, normalizeDate, normalizeTime, normalizeHomeAway } from "../lib/csv.js";
+import { coachDisplayName } from "../lib/format.js";
 
-const BLANK = { match_date: "", kickoff: "", team_name: "", opponent: "", home_away: "home", venue: "", competition: "", format: "", status: "scheduled", our_score: null, their_score: null, coaches: "" };
+const BLANK = { match_date: "", kickoff: "", team_name: "", opponent: "", home_away: "home", venue: "", competition: "", format: "", status: "scheduled", our_score: null, their_score: null, coach_ids: [] };
 
 export default {
   name: "FixturesView",
   setup() {
     const fixtures = ref([]);
+    const allCoaches = ref([]);
     const showForm = ref(false);
     const draft = ref({ ...BLANK });
     const editingId = ref(null);
@@ -16,6 +19,7 @@ export default {
 
     async function load() {
       fixtures.value = await listFixtures({ seasonId: store.currentSeasonId });
+      allCoaches.value = await listCoaches();
     }
 
     const grouped = computed(() => {
@@ -26,14 +30,29 @@ export default {
       return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
     });
 
+    // Past dates are collapsed by default - otherwise a season's worth of
+    // played fixtures pushes today's/upcoming ones further down the page
+    // every week. Upcoming stays sorted soonest-first; past (once expanded)
+    // shows most recent first, since that's what you're most likely after.
+    const today = new Date().toISOString().slice(0, 10);
+    const showPast = ref(false);
+    const upcomingGroups = computed(() => grouped.value.filter(([date]) => date >= today));
+    const pastGroups = computed(() => grouped.value.filter(([date]) => date < today).reverse());
+    const pastFixtureCount = computed(() => pastGroups.value.reduce((n, [, fx]) => n + fx.length, 0));
+    const displayedGroups = computed(() => showPast.value ? [...upcomingGroups.value, ...pastGroups.value] : upcomingGroups.value);
+
     function startAdd() { draft.value = { ...BLANK }; editingId.value = null; showForm.value = true; showImport.value = false; }
-    function startEdit(f) { draft.value = { ...f, coaches: (f.coaches || []).join(", ") }; editingId.value = f.id; showForm.value = true; showImport.value = false; }
+
+    // Editing happens inline on the fixture's own card (see template), not in
+    // the top-of-page form - so there's nothing to scroll back up for.
+    function startEdit(f) { draft.value = { ...f, coach_ids: [...(f.coach_ids || [])] }; editingId.value = f.id; showForm.value = false; showImport.value = false; }
+    function cancelEdit() { editingId.value = null; error.value = ""; }
 
     // Clone a fixture as another of our teams playing the same opponent/date -
     // the quick path for "this one fixture is actually N matches for us".
     function duplicateAsNewTeam(f) {
-      const { id, created_at, ...rest } = f;
-      draft.value = { ...rest, coaches: (f.coaches || []).join(", "), team_name: "", our_score: null, their_score: null, status: "scheduled" };
+      const { id, created_at, coaches, coach_ids, ...rest } = f;
+      draft.value = { ...rest, coach_ids: [...(coach_ids || [])], team_name: "", our_score: null, their_score: null, status: "scheduled" };
       editingId.value = null;
       showForm.value = true;
       showImport.value = false;
@@ -42,16 +61,18 @@ export default {
     async function save() {
       error.value = "";
       try {
+        const { coach_ids, coaches, ...fixtureFields } = draft.value;
         const payload = {
-          ...draft.value,
+          ...fixtureFields,
           season_id: store.currentSeasonId,
+          kickoff: draft.value.kickoff === "" ? null : draft.value.kickoff,
           our_score: draft.value.our_score === "" ? null : draft.value.our_score,
           their_score: draft.value.their_score === "" ? null : draft.value.their_score,
-          coaches: (draft.value.coaches || "").split(",").map((s) => s.trim()).filter(Boolean),
         };
-        if (editingId.value) await updateFixture(editingId.value, payload);
-        else await createFixture(payload);
+        const saved = editingId.value ? await updateFixture(editingId.value, payload) : await createFixture(payload);
+        await setFixtureCoaches(saved.id, coach_ids || []);
         showForm.value = false;
+        editingId.value = null;
         await load();
       } catch (e) { error.value = e.message; }
     }
@@ -77,6 +98,7 @@ export default {
 
     function openImport() {
       showForm.value = false;
+      editingId.value = null;
       showImport.value = true;
       // Don't prefill with the placeholder "My Club" default - that's not a
       // real name and would silently fail to match anything in the file.
@@ -212,8 +234,9 @@ export default {
 
     onMounted(load);
     return {
-      fixtures, grouped, showForm, draft, editingId, error, isAdmin,
-      startAdd, startEdit, duplicateAsNewTeam, save, remove,
+      fixtures, allCoaches, coachDisplayName, grouped, displayedGroups, showPast, pastGroups, pastFixtureCount,
+      showForm, draft, editingId, error, isAdmin,
+      startAdd, startEdit, cancelEdit, duplicateAsNewTeam, save, remove,
       showImport, importText, importHeaders, parsedRows, mapping, useHomeAwayColumns,
       ourNameInFile, teamCount, teamLabels, importError, importing, previewFixtures, skippedRowCount, unmatchedSideCount,
       openImport, cancelImport, onFile, parseImport, runImport,
@@ -229,7 +252,7 @@ export default {
 
       <article v-if="showForm">
         <form @submit.prevent="save">
-          <div class="stat-grid">
+          <div class="form-grid">
             <label>Date <input v-model="draft.match_date" type="date" required /></label>
             <label>Kickoff <input v-model="draft.kickoff" type="time" /></label>
             <label>Our team label <input v-model="draft.team_name" placeholder="e.g. Orange (optional)" /></label>
@@ -250,8 +273,14 @@ export default {
             </label>
             <label>Our score <input v-model="draft.our_score" type="number" min="0" /></label>
             <label>Their score <input v-model="draft.their_score" type="number" min="0" /></label>
-            <label>Coaches <input v-model="draft.coaches" placeholder="e.g. Dave Smith, Sarah Jones" /></label>
           </div>
+          <fieldset>
+            <legend>Coaches</legend>
+            <label v-for="c in allCoaches" :key="c.id" style="display:flex; align-items:center; gap:0.4rem; font-weight:normal;">
+              <input type="checkbox" :value="c.id" v-model="draft.coach_ids" /> {{ coachDisplayName(c) }}
+            </label>
+            <p v-if="!allCoaches.length" style="opacity:0.7; font-size:0.85rem;">No registered coaches yet - invite them from the Supabase dashboard and they'll show up here.</p>
+          </fieldset>
           <p v-if="error" style="color:#b91c1c;">{{ error }}</p>
           <button type="submit">Save fixture</button>
           <button type="button" class="secondary" @click="showForm = false">Cancel</button>
@@ -336,34 +365,73 @@ export default {
         </div>
       </article>
 
-      <section v-for="[date, fx] in grouped" :key="date">
+      <section v-for="[date, fx] in displayedGroups" :key="date">
         <div style="display:flex; align-items:center; gap:0.75rem;">
           <h4 style="margin:0;">{{ date }}</h4>
           <router-link :to="'/team-sheet-day/' + date"><button class="outline" style="width:auto; padding:0.2rem 0.75rem;">Day sheet</button></router-link>
         </div>
         <div class="matchday-columns">
           <article v-for="f in fx" :key="f.id" :class="{ pitch: f.status === 'played' }">
-            <header>
-              <strong>{{ f.team_name || 'Team' }}</strong> vs {{ f.opponent }}
-              <span class="tag">{{ f.home_away }}</span>
-              <span class="tag">{{ f.status }}</span>
-            </header>
-            <p v-if="f.status === 'played'" class="scoreline">{{ f.our_score }}<span class="vs">&ndash;</span>{{ f.their_score }}</p>
-            <p style="font-size:0.85rem; opacity:0.75;">{{ f.venue }} <span v-if="f.kickoff">&middot; {{ f.kickoff }}</span></p>
-            <p v-if="(f.coaches || []).length" style="font-size:0.85rem; opacity:0.75;">Coaches: {{ f.coaches.join(', ') }}</p>
-            <footer style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <router-link :to="'/matchday/' + f.match_date"><button class="outline" style="width:auto;">Pick team</button></router-link>
-              <router-link :to="'/team-sheet/' + f.id"><button class="outline" style="width:auto;">Team sheet</button></router-link>
-              <router-link :to="'/live/' + f.id"><button class="outline" style="width:auto;">Live</button></router-link>
-              <router-link :to="'/match-stats/' + f.id"><button class="outline" style="width:auto;">Stats</button></router-link>
-              <button class="secondary" style="width:auto;" @click="startEdit(f)">Edit</button>
-              <button class="secondary outline" style="width:auto;" @click="duplicateAsNewTeam(f)">+ Add team</button>
-              <button v-if="isAdmin()" class="secondary outline" style="width:auto;" @click="remove(f)">Delete</button>
-            </footer>
+            <form v-if="editingId === f.id" @submit.prevent="save">
+              <div class="form-grid">
+                <label>Date <input v-model="draft.match_date" type="date" required /></label>
+                <label>Kickoff <input v-model="draft.kickoff" type="time" /></label>
+                <label>Our team label <input v-model="draft.team_name" placeholder="e.g. Orange (optional)" /></label>
+                <label>Opponent <input v-model="draft.opponent" required /></label>
+                <label>Home/Away
+                  <select v-model="draft.home_away"><option value="home">Home</option><option value="away">Away</option></select>
+                </label>
+                <label>Venue <input v-model="draft.venue" /></label>
+                <label>Format <input v-model="draft.format" placeholder="e.g. 9v9" /></label>
+                <label>Competition <input v-model="draft.competition" /></label>
+                <label>Status
+                  <select v-model="draft.status">
+                    <option value="scheduled">Scheduled</option>
+                    <option value="played">Played</option>
+                    <option value="postponed">Postponed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+                <label>Our score <input v-model="draft.our_score" type="number" min="0" /></label>
+                <label>Their score <input v-model="draft.their_score" type="number" min="0" /></label>
+              </div>
+              <fieldset>
+                <legend>Coaches</legend>
+                <label v-for="c in allCoaches" :key="c.id" style="display:flex; align-items:center; gap:0.4rem; font-weight:normal;">
+                  <input type="checkbox" :value="c.id" v-model="draft.coach_ids" /> {{ coachDisplayName(c) }}
+                </label>
+                <p v-if="!allCoaches.length" style="opacity:0.7; font-size:0.85rem;">No registered coaches yet - invite them from the Supabase dashboard and they'll show up here.</p>
+              </fieldset>
+              <p v-if="error" style="color:#b91c1c;">{{ error }}</p>
+              <button type="submit" style="width:auto;">Save fixture</button>
+              <button type="button" class="secondary" style="width:auto;" @click="cancelEdit">Cancel</button>
+            </form>
+            <template v-else>
+              <header>
+                <strong>{{ f.team_name || 'Team' }}</strong> vs {{ f.opponent }}
+                <span class="tag">{{ f.home_away }}</span>
+                <span class="tag">{{ f.status }}</span>
+              </header>
+              <p v-if="f.status === 'played'" class="scoreline">{{ f.our_score }}<span class="vs">&ndash;</span>{{ f.their_score }}</p>
+              <p style="font-size:0.85rem; opacity:0.75;">{{ f.venue }} <span v-if="f.kickoff">&middot; {{ f.kickoff }}</span></p>
+              <p v-if="(f.coaches || []).length" style="font-size:0.85rem; opacity:0.75;">Coaches: {{ f.coaches.join(', ') }}</p>
+              <footer style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <router-link :to="'/matchday/' + f.match_date"><button class="outline" style="width:auto;">Pick team</button></router-link>
+                <router-link :to="'/team-sheet/' + f.id"><button class="outline" style="width:auto;">Team sheet</button></router-link>
+                <router-link :to="'/live/' + f.id"><button class="outline" style="width:auto;">Live</button></router-link>
+                <router-link :to="'/match-stats/' + f.id"><button class="outline" style="width:auto;">Stats</button></router-link>
+                <button class="secondary" style="width:auto;" @click="startEdit(f)">Edit</button>
+                <button class="secondary outline" style="width:auto;" @click="duplicateAsNewTeam(f)">+ Add team</button>
+                <button v-if="isAdmin()" class="secondary outline" style="width:auto;" @click="remove(f)">Delete</button>
+              </footer>
+            </template>
           </article>
         </div>
       </section>
       <p v-if="!fixtures.length">No fixtures yet for this season.</p>
+      <button v-if="pastGroups.length" class="outline" style="width:auto; margin-top:1rem;" @click="showPast = !showPast">
+        {{ showPast ? 'Hide' : 'Show' }} past fixtures ({{ pastFixtureCount }})
+      </button>
     </main>
   `,
 };

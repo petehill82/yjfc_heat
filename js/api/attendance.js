@@ -22,7 +22,7 @@ export async function deleteTrainingSession(id) {
 export async function listAttendanceForSession(sessionId) {
   const { data, error } = await supabase
     .from("attendance")
-    .select("*, players(first_name, last_name, squad_number)")
+    .select("*, players(first_name, last_name, display_name, squad_number)")
     .eq("session_id", sessionId);
   if (error) throw error;
   return data;

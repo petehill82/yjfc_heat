@@ -4,7 +4,7 @@ import { supabase } from "../supabase.js";
 export async function listAppearancesForFixture(fixtureId) {
   const { data, error } = await supabase
     .from("appearances")
-    .select("*, players(first_name, last_name, squad_number, preferred_positions)")
+    .select("*, players(first_name, last_name, display_name, squad_number, preferred_positions)")
     .eq("fixture_id", fixtureId);
   if (error) throw error;
   return data;

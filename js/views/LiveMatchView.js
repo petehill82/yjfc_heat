@@ -2,6 +2,8 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { getFixture, updateFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
 import { store } from "../store.js";
+import { playerDisplayName } from "../lib/format.js";
+import { DEFAULT_GAME_MINUTES, DEFAULT_PLAYERS_ON_PITCH } from "../lib/matchFormat.js";
 
 // Quick, thumb-friendly score/scorer/assist/POTM entry for use pitch-side on
 // a phone, mid-match. Deliberately narrow scope - minutes, ratings etc. stay
@@ -21,8 +23,7 @@ export default {
     const lastGoal = ref(null);      // { side: 'us'|'them', scorerPid, assistPid } - single-level undo
 
     function playerName(pid) {
-      const r = rows[pid];
-      return `${r.players?.first_name ?? ""} ${r.players?.last_name ?? ""}`.trim();
+      return playerDisplayName(rows[pid].players);
     }
 
     function squadNum(pid) {
@@ -136,6 +137,22 @@ export default {
 
     const scorers = computed(() => order.value.filter((pid) => rows[pid].goals > 0));
 
+    // Fair-rotation reference: with N in the squad sharing playersOnPitch
+    // shirts across gameMinutes (this fixture's season format), each
+    // player's fair share on the pitch is (playersOnPitch * gameMinutes) / N
+    // - so they need to be rested for the rest of the game to keep it even.
+    // Same maths as Match Stats' default minutes, framed as "time off" for a
+    // live, at-a-glance rotation cue.
+    const matchFormat = computed(() => {
+      const season = store.seasons.find((s) => s.id === fixture.value?.season_id);
+      return {
+        gameMinutes: season?.game_minutes ?? DEFAULT_GAME_MINUTES,
+        playersOnPitch: season?.players_on_pitch ?? DEFAULT_PLAYERS_ON_PITCH,
+      };
+    });
+    const fairMinutesOn = computed(() => order.value.length ? Math.round((matchFormat.value.playersOnPitch * matchFormat.value.gameMinutes) / order.value.length) : 0);
+    const fairMinutesOff = computed(() => order.value.length ? matchFormat.value.gameMinutes - fairMinutesOn.value : 0);
+
     // WhatsApp-friendly result report - score, scorers, assists, POTM.
     const reportStatus = ref("");
 
@@ -180,7 +197,7 @@ export default {
     onMounted(load);
     return {
       fixture, rows, order, saving, savedAt, playerName, squadNum,
-      step, pendingScorerPid, lastGoal, lastGoalLabel, scorers,
+      step, pendingScorerPid, lastGoal, lastGoalLabel, scorers, fairMinutesOn, fairMinutesOff,
       startGoal, cancelGoal, pickScorer, finishGoal, addOppositionGoal, undoLastGoal,
       setPotm, markFullTime, shareReport, reportStatus,
     };
@@ -211,6 +228,10 @@ export default {
       </p>
       <p style="text-align:center; font-size:0.8rem; opacity:0.6;">
         <span v-if="saving">Saving...</span><span v-else-if="savedAt">Saved {{ savedAt }}</span>
+      </p>
+
+      <p v-if="order.length" style="text-align:center; font-size:0.85rem; opacity:0.8;">
+        Pitch time ({{ order.length }} in squad): ~{{ fairMinutesOn }} min on, ~{{ fairMinutesOff }} min off each
       </p>
 
       <article v-if="step === 'scorer'">

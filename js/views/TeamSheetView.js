@@ -2,6 +2,7 @@ import { ref, computed, onMounted } from "vue";
 import { getFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture } from "../api/appearances.js";
 import { store } from "../store.js";
+import { playerDisplayName } from "../lib/format.js";
 
 export default {
   name: "TeamSheetView",
@@ -20,7 +21,7 @@ export default {
     }
 
     function playerName(a) {
-      return `${a.players?.first_name ?? ""} ${a.players?.last_name ?? ""}`.trim();
+      return playerDisplayName(a.players);
     }
 
     function asText() {

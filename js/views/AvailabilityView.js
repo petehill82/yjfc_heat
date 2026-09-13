@@ -2,6 +2,7 @@ import { ref, reactive, onMounted } from "vue";
 import { listPlayers } from "../api/players.js";
 import { listUpcomingFixtures } from "../api/fixtures.js";
 import { listUpcomingAvailability, setAvailability, setAvailabilityBulk } from "../api/availability.js";
+import { playerDisplayName } from "../lib/format.js";
 
 const CYCLE = ["unknown", "available", "unavailable"];
 const LABEL = { unknown: "?", available: "\u2713", unavailable: "\u2717" };
@@ -51,7 +52,7 @@ export default {
     }
 
     onMounted(load);
-    return { players, dates, statusFor, cycle, markAllAvailable, bulkBusy, LABEL, CLASS };
+    return { players, dates, statusFor, cycle, markAllAvailable, bulkBusy, LABEL, CLASS, playerDisplayName };
   },
   template: `
     <main class="container">
@@ -71,7 +72,7 @@ export default {
           </thead>
           <tbody>
             <tr v-for="p in players" :key="p.id">
-              <td>{{ p.first_name }} {{ p.last_name }}</td>
+              <td>{{ playerDisplayName(p) }}</td>
               <td v-for="d in dates" :key="d">
                 <button class="outline" style="width:auto; padding:0.1rem 0.6rem;" @click="cycle(p.id, d)">
                   <span :class="CLASS[statusFor(p.id, d)]">{{ LABEL[statusFor(p.id, d)] }}</span>

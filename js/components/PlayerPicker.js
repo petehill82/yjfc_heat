@@ -1,15 +1,17 @@
+import { playerDisplayName } from "../lib/format.js";
+
 // One row per squad player for a single fixture: just tick who's in the
 // squad for this match, plus availability / already-playing-elsewhere-today
 // hints. No starting/subs split, no positions or shirt numbers - squads only.
 
 // Highest ability first (unrated players sort last), then alphabetically by
-// first name - used to order the pick-team list. The number itself is never
-// shown in the UI, only used for ordering.
+// displayed name - used to order the pick-team list. The number itself is
+// never shown in the UI, only used for ordering.
 function byAbilityThenName(a, b) {
   const abilA = a.ability ?? -1;
   const abilB = b.ability ?? -1;
   if (abilB !== abilA) return abilB - abilA;
-  return a.first_name.toLowerCase().localeCompare(b.first_name.toLowerCase());
+  return playerDisplayName(a).toLowerCase().localeCompare(playerDisplayName(b).toLowerCase());
 }
 
 export default {
@@ -39,6 +41,7 @@ export default {
     },
   },
   methods: {
+    playerDisplayName,
     row(p) {
       return this.rows[p.id] || { selected: false };
     },
@@ -59,7 +62,7 @@ export default {
         <label style="display:flex; align-items:center; gap:0.5rem; flex:1;">
           <input type="checkbox" :checked="row(p).selected" @change="toggle(p)" />
           <span class="num">{{ p.squad_number ?? '-' }}</span>
-          <span>{{ p.first_name }} {{ p.last_name }}</span>
+          <span>{{ playerDisplayName(p) }}</span>
           <span v-if="(otherMatches[p.id] || []).length" class="tag">
             Also playing: {{ otherMatches[p.id].join(', ') }}
           </span>
@@ -76,7 +79,7 @@ export default {
           <label style="display:flex; align-items:center; gap:0.5rem; flex:1;">
             <input type="checkbox" :checked="row(p).selected" @change="toggle(p)" />
             <span class="num">{{ p.squad_number ?? '-' }}</span>
-            <span>{{ p.first_name }} {{ p.last_name }}</span>
+            <span>{{ playerDisplayName(p) }}</span>
             <span class="tag warn">Unavailable</span>
           </label>
         </div>

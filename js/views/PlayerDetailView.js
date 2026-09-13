@@ -1,6 +1,7 @@
 import { ref, onMounted } from "vue";
 import { getPlayer, updatePlayer, getPlayerSeasonStats, getPlayerAppearances } from "../api/players.js";
 import { store, isAdmin } from "../store.js";
+import { playerDisplayName } from "../lib/format.js";
 
 export default {
   name: "PlayerDetailView",
@@ -50,12 +51,12 @@ export default {
     }
 
     onMounted(load);
-    return { player, editing, draft, seasonStats, appearances, error, isAdmin, startEdit, save };
+    return { player, editing, draft, seasonStats, appearances, error, isAdmin, playerDisplayName, startEdit, save };
   },
   template: `
     <main class="container" v-if="player">
       <p><router-link to="/players">&larr; Back to squad</router-link></p>
-      <h2>{{ player.first_name }} {{ player.last_name }}
+      <h2>{{ playerDisplayName(player) }}
         <span class="tag">#{{ player.squad_number ?? '-' }}</span>
       </h2>
 
@@ -69,6 +70,7 @@ export default {
         <div class="stat-grid">
           <input v-model="draft.first_name" placeholder="First name" required />
           <input v-model="draft.last_name" placeholder="Last name" required />
+          <input v-model="draft.display_name" placeholder="Display name (optional)" />
           <input v-model="draft.squad_number" type="number" placeholder="Squad no." />
           <input v-model="draft.ability" type="number" min="1" max="10" placeholder="Ability (1-10)" />
           <input v-model="draft.year_of_birth" type="number" placeholder="Year of birth" />

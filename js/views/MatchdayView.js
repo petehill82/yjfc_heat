@@ -4,6 +4,7 @@ import { listPlayers } from "../api/players.js";
 import { listAvailabilityForDate } from "../api/availability.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
 import PlayerPicker from "../components/PlayerPicker.js";
+import { playerDisplayName } from "../lib/format.js";
 
 export default {
   name: "MatchdayView",
@@ -71,7 +72,12 @@ export default {
       rowsByFixture[fixtureId][playerId] = updated;
       saving.value = true;
       try {
-        await upsertAppearance(updated);
+        // `current` may carry the joined `players` object once a row has
+        // been loaded from the DB (listAppearancesForFixture embeds it) -
+        // strip it before upserting, since it isn't a real appearances column
+        // and silently fails the whole write (Supabase upsert rejects it).
+        const { players, ...row } = updated;
+        await upsertAppearance(row);
         savedAt.value = new Date().toLocaleTimeString();
       } finally {
         saving.value = false;
@@ -79,7 +85,7 @@ export default {
     }
 
     onMounted(load);
-    return { fixtures, players, availability, rowsByFixture, otherMatchesByFixture, unselectedPlayers, saving, savedAt, onChange };
+    return { fixtures, players, availability, rowsByFixture, otherMatchesByFixture, unselectedPlayers, playerDisplayName, saving, savedAt, onChange };
   },
   template: `
     <main class="container">
@@ -92,7 +98,7 @@ export default {
 
       <article v-if="unselectedPlayers.length" style="border-top-color: var(--status-warn); margin-top:1rem;">
         <strong>{{ unselectedPlayers.length }} not selected for any fixture today</strong>
-        <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(p => p.first_name + ' ' + p.last_name).join(', ') }}</p>
+        <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(playerDisplayName).join(', ') }}</p>
       </article>
       <p v-else-if="fixtures.length" style="opacity:0.7; margin-top:1rem;">Everyone in the squad is selected for at least one fixture today.</p>
 

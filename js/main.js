@@ -17,7 +17,8 @@ import DayTeamSheetView from "./views/DayTeamSheetView.js";
 import MatchStatsView from "./views/MatchStatsView.js";
 import LiveMatchView from "./views/LiveMatchView.js";
 import AvailabilityView from "./views/AvailabilityView.js";
-import AttendanceView from "./views/AttendanceView.js";
+// Not in use for now - see NavBar.js for the matching nav-link comment-out.
+// import AttendanceView from "./views/AttendanceView.js";
 import AdminView from "./views/AdminView.js";
 
 const routes = [
@@ -34,7 +35,7 @@ const routes = [
   { path: "/match-stats/:id", name: "match-stats", component: MatchStatsView, props: true },
   { path: "/live/:id", name: "live-match", component: LiveMatchView, props: true },
   { path: "/availability", name: "availability", component: AvailabilityView },
-  { path: "/attendance", name: "attendance", component: AttendanceView },
+  // { path: "/attendance", name: "attendance", component: AttendanceView },
   { path: "/admin", name: "admin", component: AdminView, meta: { adminOnly: true } },
 ];
 

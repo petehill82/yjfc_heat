@@ -5,6 +5,7 @@ import {
   listAttendanceForSession, setAttendance, listPlayerAttendance,
 } from "../api/attendance.js";
 import { store } from "../store.js";
+import { playerDisplayName } from "../lib/format.js";
 
 export default {
   name: "AttendanceView",
@@ -56,7 +57,7 @@ export default {
     }
 
     onMounted(load);
-    return { players, sessions, activeSessionId, attendanceMap, newDate, addSession, removeSession, openSession, toggle, pct };
+    return { players, sessions, activeSessionId, attendanceMap, newDate, playerDisplayName, addSession, removeSession, openSession, toggle, pct };
   },
   template: `
     <main class="container">
@@ -82,7 +83,7 @@ export default {
         <div v-for="p in players" :key="p.id" class="player-row">
           <label style="display:flex; align-items:center; gap:0.5rem; flex:1;">
             <input type="checkbox" :checked="attendanceMap[p.id]" @change="toggle(p.id)" />
-            {{ p.first_name }} {{ p.last_name }}
+            {{ playerDisplayName(p) }}
           </label>
           <span class="tag">Season: {{ pct(p.id) }}</span>
         </div>

@@ -9,6 +9,14 @@ import StatTile from "../components/StatTile.js";
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
+// Chart labels stay short by default (first name + last initial) since bar
+// charts get cramped fast; an explicit display name overrides that instead
+// of also being abbreviated - if a coach set one, it's already meant to be
+// the short form.
+function chartLabel(p) {
+  return p.display_name || `${p.first_name} ${p.last_name[0]}.`;
+}
+
 // Colors: club orange for "us/home", categorical blue for the paired series -
 // both drawn from the dataviz skill's validated 3-slot order (blue, orange, aqua).
 const ORANGE = "#eb6834";
@@ -68,7 +76,7 @@ export default {
       charts.leaderboard = new Chart(leaderboardCanvas.value, {
         type: "bar",
         data: {
-          labels: top.map((p) => `${p.first_name} ${p.last_name[0]}.`),
+          labels: top.map((p) => chartLabel(p)),
           datasets: [
             { label: "Goals", data: top.map((p) => p.goals), backgroundColor: ORANGE, borderRadius: 4, borderSkipped: false, barThickness: 18, categoryPercentage: 0.7, barPercentage: 0.9 },
             { label: "Assists", data: top.map((p) => p.assists), backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, barThickness: 18, categoryPercentage: 0.7, barPercentage: 0.9 },
@@ -84,7 +92,7 @@ export default {
       charts.matches = new Chart(matchesCanvas.value, {
         type: "bar",
         data: {
-          labels: sorted.map((p) => `${p.first_name} ${p.last_name[0]}.`),
+          labels: sorted.map((p) => chartLabel(p)),
           datasets: [{ label: "Matches played", data: sorted.map((p) => p.apps), backgroundColor: ORANGE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
         options: { ...BASE_OPTS, indexAxis: "y", plugins: { ...BASE_OPTS.plugins, legend: { display: false } } },
@@ -97,7 +105,7 @@ export default {
       charts.potm = new Chart(potmCanvas.value, {
         type: "bar",
         data: {
-          labels: sorted.map((p) => `${p.first_name} ${p.last_name[0]}.`),
+          labels: sorted.map((p) => chartLabel(p)),
           datasets: [{ label: "POTM awards", data: sorted.map((p) => p.potm_count), backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
         options: {
@@ -118,7 +126,7 @@ export default {
       charts.goalkeeping = new Chart(goalkeepingCanvas.value, {
         type: "bar",
         data: {
-          labels: keepers.map((p) => `${p.first_name} ${p.last_name[0]}.`),
+          labels: keepers.map((p) => chartLabel(p)),
           datasets: [{ label: "Minutes in goal", data: keepers.map((p) => p.minutes_in_goal), backgroundColor: AQUA, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
         options: { ...BASE_OPTS, indexAxis: "y", plugins: { ...BASE_OPTS.plugins, legend: { display: false } } },
@@ -191,10 +199,10 @@ export default {
       <h3>Goals &amp; assists (top 8)</h3>
       <div style="height:280px;"><canvas ref="leaderboardCanvas"></canvas></div>
 
-      <h3>Matches played (fairness check)</h3>
+      <h3>Matches played</h3>
       <div :style="{ height: Math.max(220, players.length * 22) + 'px' }"><canvas ref="matchesCanvas"></canvas></div>
 
-      <h3>Player of the Match (fairness check)</h3>
+      <h3>Player of the Match</h3>
       <div :style="{ height: Math.max(220, players.length * 22) + 'px' }"><canvas ref="potmCanvas"></canvas></div>
       <p v-if="!players.some(p => p.potm_count > 0)" style="opacity:0.7;">No POTM awarded yet this season.</p>
 

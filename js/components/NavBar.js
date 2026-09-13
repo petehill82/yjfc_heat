@@ -28,7 +28,7 @@ export default {
         <router-link to="/fixtures">Fixtures</router-link>
         <router-link to="/results">Results</router-link>
         <router-link to="/availability">Availability</router-link>
-        <router-link to="/attendance">Attendance</router-link>
+        <!-- Not in use for now: <router-link to="/attendance">Attendance</router-link> -->
         <router-link v-if="isAdmin()" to="/admin">Admin</router-link>
         <a href="#" @click.prevent="logout" class="no-print">Sign out</a>
       </nav>

@@ -49,9 +49,11 @@ export async function getPlayerSeasonStats(playerId, seasonId) {
 export async function getPlayerAppearances(playerId) {
   const { data, error } = await supabase
     .from("appearances")
-    .select("*, fixtures(match_date, opponent, home_away, our_score, their_score, status, team_name)")
+    .select("*, fixtures(match_date, kickoff, opponent, home_away, our_score, their_score, status, team_name)")
     .eq("player_id", playerId)
-    .order("fixture_id", { ascending: false });
+    .eq("selected", true)
+    .order("match_date", { foreignTable: "fixtures", ascending: false })
+    .order("kickoff", { foreignTable: "fixtures", ascending: false });
   if (error) throw error;
   return data;
 }

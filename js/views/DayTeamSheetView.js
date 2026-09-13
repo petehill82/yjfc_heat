@@ -3,6 +3,7 @@ import { listFixturesOnDate } from "../api/fixtures.js";
 import { listAppearancesForFixture } from "../api/appearances.js";
 import { listPlayers } from "../api/players.js";
 import { store } from "../store.js";
+import { playerDisplayName } from "../lib/format.js";
 
 export default {
   name: "DayTeamSheetView",
@@ -23,7 +24,7 @@ export default {
           .filter((a) => a.selected)
           .map((a) => ({
             id: a.player_id,
-            name: `${a.players?.first_name ?? ""} ${a.players?.last_name ?? ""}`.trim(),
+            name: playerDisplayName(a.players),
             goals: a.goals,
             assists: a.assists,
             potm: a.potm,
@@ -109,7 +110,7 @@ export default {
 
     onMounted(load);
     return {
-      fixtures, squadByFixture, unselectedPlayers, clubName, playedFixtures,
+      fixtures, squadByFixture, unselectedPlayers, clubName, playedFixtures, playerDisplayName,
       share, shareResults, printSheet, shareStatus,
     };
   },
@@ -144,7 +145,7 @@ export default {
 
       <article v-if="unselectedPlayers.length" class="no-print" style="border-top-color: var(--status-warn); margin-top:1rem;">
         <strong>{{ unselectedPlayers.length }} not selected for any fixture today</strong>
-        <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(p => p.first_name + ' ' + p.last_name).join(', ') }}</p>
+        <p style="margin:0.35rem 0 0;">{{ unselectedPlayers.map(playerDisplayName).join(', ') }}</p>
       </article>
 
       <div class="no-print" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1rem;">

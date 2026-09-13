@@ -1,6 +1,7 @@
 import { ref, watch, onMounted } from "vue";
 import { store, currentSeason } from "../store.js";
 import { listResults } from "../api/results.js";
+import { playerDisplayName } from "../lib/format.js";
 
 function outcome(r) {
   if (r.our_score == null || r.their_score == null) return "";
@@ -23,7 +24,7 @@ export default {
     watch(() => store.currentSeasonId, load);
     onMounted(load);
 
-    return { results, store, currentSeason, outcome };
+    return { results, store, currentSeason, outcome, playerDisplayName };
   },
   template: `
     <main class="container">
@@ -51,7 +52,7 @@ export default {
             </td>
             <td>
               <router-link v-if="r.potm_player_id" :to="'/players/' + r.potm_player_id">
-                {{ r.potm_first_name }} {{ r.potm_last_name }}
+                {{ playerDisplayName({ first_name: r.potm_first_name, last_name: r.potm_last_name, display_name: r.potm_display_name }) }}
               </router-link>
               <span v-else style="opacity:0.6;">&ndash;</span>
             </td>

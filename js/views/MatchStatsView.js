@@ -1,12 +1,9 @@
 import { ref, reactive, onMounted } from "vue";
 import { getFixture, updateFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
-
-// Current format: 7-a-side, 50-minute games. Fair-minutes policy splits the
-// total pitch-minutes on offer evenly across everyone selected, as a default
-// starting point for the minutes-played column (coaches can still edit it).
-const GAME_MINUTES = 50;
-const PLAYERS_ON_PITCH = 7;
+import { playerDisplayName } from "../lib/format.js";
+import { DEFAULT_GAME_MINUTES, DEFAULT_PLAYERS_ON_PITCH } from "../lib/matchFormat.js";
+import { store } from "../store.js";
 
 export default {
   name: "MatchStatsView",
@@ -23,13 +20,15 @@ export default {
       const apps = (await listAppearancesForFixture(props.id)).filter((a) => a.selected);
       apps.sort((a, b) => (a.starting === b.starting ? 0 : a.starting ? -1 : 1));
       order.value = apps.map((a) => a.player_id);
-      const fairShare = apps.length ? Math.round((GAME_MINUTES * PLAYERS_ON_PITCH) / apps.length) : 0;
+      const season = store.seasons.find((s) => s.id === fixture.value.season_id);
+      const gameMinutes = season?.game_minutes ?? DEFAULT_GAME_MINUTES;
+      const playersOnPitch = season?.players_on_pitch ?? DEFAULT_PLAYERS_ON_PITCH;
+      const fairShare = apps.length ? Math.round((playersOnPitch * gameMinutes) / apps.length) : 0;
       for (const a of apps) rows[a.player_id] = { ...a, minutes_played: a.minutes_played || fairShare };
     }
 
     function playerName(pid) {
-      const r = rows[pid];
-      return `${r.players?.first_name ?? ""} ${r.players?.last_name ?? ""}`.trim();
+      return playerDisplayName(rows[pid].players);
     }
 
     async function saveRow(pid) {
@@ -39,7 +38,7 @@ export default {
         await upsertAppearance({
           fixture_id: props.id,
           player_id: pid,
-          selected: true,
+          selected: r.selected,
           starting: r.starting,
           shirt_number: r.shirt_number,
           position: r.position,
@@ -54,6 +53,17 @@ export default {
       } finally {
         saving.value = false;
       }
+    }
+
+    // Take a player back out of the squad after the fact - e.g. they were
+    // selected but didn't turn up. Un-ticking on the Matchday picker does the
+    // same thing, but coaches naturally reach for this page after a match.
+    async function removePlayer(pid) {
+      if (!confirm(`Remove ${playerName(pid)} from this fixture's squad? (e.g. they didn't turn up)`)) return;
+      rows[pid].selected = false;
+      rows[pid].potm = false;
+      await saveRow(pid);
+      order.value = order.value.filter((p) => p !== pid);
     }
 
     async function setPotm(pid) {
@@ -72,7 +82,7 @@ export default {
     }
 
     onMounted(load);
-    return { fixture, rows, order, saving, savedAt, playerName, saveRow, setPotm, saveScore };
+    return { fixture, rows, order, saving, savedAt, playerName, saveRow, removePlayer, setPotm, saveScore };
   },
   template: `
     <main class="container" v-if="fixture">
@@ -99,6 +109,7 @@ export default {
         <label style="display:flex; align-items:center; gap:0.25rem;">
           <input type="checkbox" :checked="rows[pid].potm" @change="setPotm(pid)" /> POTM
         </label>
+        <button type="button" class="secondary outline" style="width:auto;" @click="removePlayer(pid)">Remove</button>
       </div>
       <p v-if="!order.length">No players selected for this fixture yet - pick a team first.</p>
     </main>
