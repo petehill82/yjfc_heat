@@ -5,6 +5,7 @@ import { store, refreshAuth } from "./store.js";
 import NavBar from "./components/NavBar.js";
 
 import LoginView from "./views/LoginView.js";
+import SetPasswordView from "./views/SetPasswordView.js";
 import DashboardView from "./views/DashboardView.js";
 import TodayView from "./views/TodayView.js";
 import PlayersView from "./views/PlayersView.js";
@@ -21,8 +22,21 @@ import AvailabilityView from "./views/AvailabilityView.js";
 // import AttendanceView from "./views/AttendanceView.js";
 import AdminView from "./views/AdminView.js";
 
+// Supabase invite/reset emails land here as a URL hash fragment
+// (#access_token=...&type=invite|recovery), which signs the coach in via a
+// one-time token but sets no password. This app also uses hash-based
+// routing, so that fragment would otherwise just look like an unmatched
+// route. Read it here, synchronously, before the router's first navigation
+// (and before Supabase's own async hash processing clears it) so we know to
+// send the coach to the set-password page once their session is ready.
+let pendingAuthRedirect = /access_token=/.test(location.hash)
+  && ["invite", "recovery"].includes(new URLSearchParams(location.hash.slice(1)).get("type"))
+  ? "set-password"
+  : null;
+
 const routes = [
   { path: "/login", name: "login", component: LoginView, meta: { public: true } },
+  { path: "/set-password", name: "set-password", component: SetPasswordView },
   { path: "/", name: "dashboard", component: DashboardView },
   { path: "/today", name: "today", component: TodayView },
   { path: "/players", name: "players", component: PlayersView },
@@ -37,12 +51,20 @@ const routes = [
   { path: "/availability", name: "availability", component: AvailabilityView },
   // { path: "/attendance", name: "attendance", component: AttendanceView },
   { path: "/admin", name: "admin", component: AdminView, meta: { adminOnly: true } },
+  // Catch-all for anything unmatched (e.g. the raw invite/reset hash itself,
+  // once consumed below) rather than silently rendering a blank page.
+  { path: "/:pathMatch(.*)*", redirect: "/" },
 ];
 
 const router = createRouter({ history: createWebHashHistory(), routes });
 
 router.beforeEach(async (to) => {
   if (!store.ready) await refreshAuth();
+  if (pendingAuthRedirect && to.name !== pendingAuthRedirect) {
+    const target = pendingAuthRedirect;
+    pendingAuthRedirect = null;
+    return { name: target };
+  }
   if (!to.meta.public && !store.user) {
     return { name: "login", query: { redirect: to.fullPath } };
   }
@@ -57,7 +79,7 @@ router.beforeEach(async (to) => {
 
 const RootLayout = {
   components: { NavBar },
-  computed: { showNav() { return store.ready && store.user && this.$route.name !== "login"; } },
+  computed: { showNav() { return store.ready && store.user && !["login", "set-password"].includes(this.$route.name); } },
   template: `
     <NavBar v-if="showNav" />
     <router-view />

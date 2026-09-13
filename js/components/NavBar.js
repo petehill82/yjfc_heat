@@ -30,6 +30,7 @@ export default {
         <router-link to="/availability">Availability</router-link>
         <!-- Not in use for now: <router-link to="/attendance">Attendance</router-link> -->
         <router-link v-if="isAdmin()" to="/admin">Admin</router-link>
+        <router-link to="/set-password" class="no-print">Profile</router-link>
         <a href="#" @click.prevent="logout" class="no-print">Sign out</a>
       </nav>
     </header>
@@ -40,6 +41,7 @@ export default {
       <router-link to="/fixtures">📅<br>Fixtures</router-link>
       <router-link to="/availability">✅<br>Avail.</router-link>
       <router-link v-if="isAdmin()" to="/admin">⚙️<br>Admin</router-link>
+      <router-link to="/set-password">🔑<br>Profile</router-link>
       <a href="#" @click.prevent="logout">🚪<br>Sign out</a>
     </nav>
   `,
