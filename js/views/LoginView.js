@@ -27,7 +27,7 @@ export default {
       if (!email.value.trim()) { error.value = "Enter your email above first."; return; }
       error.value = "";
       const { error: err } = await sendPasswordReset(email.value.trim(), location.origin + location.pathname);
-      info.value = err ? "" : "Password reset email sent - check your inbox.";
+      info.value = err ? "" : "Password reset email sent - check your inbox (and junk folder).";
       if (err) error.value = err.message;
     }
 
@@ -55,7 +55,7 @@ export default {
           <a href="#" @click.prevent="forgotPassword">Forgot password?</a>
         </p>
         <p style="text-align:center; font-size:0.8rem; opacity:0.7;">
-          New coach? Ask the admin to invite your email from the Supabase dashboard.
+          New coach? Ask the admin to set you up - they'll text or hand you a temporary password to sign in with.
         </p>
       </article>
     </main>
