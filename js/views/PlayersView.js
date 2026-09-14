@@ -3,6 +3,7 @@ import { listPlayers, createPlayer, setPlayerActive } from "../api/players.js";
 import { playerSeasonStats } from "../api/stats.js";
 import { store, isAdmin, currentSeason } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 const BLANK_PLAYER = { first_name: "", last_name: "", display_name: "", squad_number: null, ability: null, year_of_birth: null, preferred_positions: "" };
 const BLANK_STATS = { apps: 0, goals: 0, assists: 0, potm_count: 0 };
@@ -18,7 +19,7 @@ export default {
     const newPlayer = ref({ ...BLANK_PLAYER });
     const error = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       players.value = await listPlayers({ activeOnly: !showArchived.value });
       if (store.currentSeasonId) {
         const stats = await playerSeasonStats(store.currentSeasonId);
@@ -26,7 +27,7 @@ export default {
       } else {
         statsByPlayer.value = {};
       }
-    }
+    });
 
     function statsFor(pid) {
       return statsByPlayer.value[pid] || BLANK_STATS;
@@ -98,13 +99,14 @@ export default {
     watch(() => store.currentSeasonId, load);
     onMounted(load);
     return {
-      players, filtered, search, showArchived, showAdd, newPlayer, error, isAdmin,
+      players, filtered, search, showArchived, showAdd, newPlayer, error, loadError, isAdmin,
       playerDisplayName, statsFor, sortBy, sortIndicator, store, currentSeason, addPlayer, toggleArchive, load,
     };
   },
   template: `
     <main class="container">
       <h2>Squad</h2>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
       <label v-if="store.seasons.length > 1">Season
         <select v-model="store.currentSeasonId">
           <option v-for="s in store.seasons" :key="s.id" :value="s.id">{{ s.name }} - {{ s.squad_name }}</option>

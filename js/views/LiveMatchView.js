@@ -4,6 +4,7 @@ import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.
 import { store } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
 import { DEFAULT_GAME_MINUTES, DEFAULT_PLAYERS_ON_PITCH } from "../lib/matchFormat.js";
+import { useLoader } from "../lib/useLoader.js";
 
 // Quick, thumb-friendly score/scorer/assist/POTM entry for use pitch-side on
 // a phone, mid-match. Deliberately narrow scope - minutes, ratings etc. stay
@@ -31,12 +32,12 @@ export default {
       return r.players?.squad_number ?? r.shirt_number ?? "-";
     }
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       fixture.value = await getFixture(props.id);
       const apps = (await listAppearancesForFixture(props.id)).filter((a) => a.selected);
       for (const a of apps) rows[a.player_id] = { ...a };
       order.value = apps.map((a) => a.player_id).sort((a, b) => playerName(a).localeCompare(playerName(b)));
-    }
+    });
 
     async function saveRow(pid) {
       const r = rows[pid];
@@ -199,11 +200,14 @@ export default {
       fixture, rows, order, saving, savedAt, playerName, squadNum,
       step, pendingScorerPid, lastGoal, lastGoalLabel, scorers, fairMinutesOn, fairMinutesOff,
       startGoal, cancelGoal, pickScorer, finishGoal, addOppositionGoal, undoLastGoal,
-      setPotm, markFullTime, shareReport, reportStatus,
+      setPotm, markFullTime, shareReport, reportStatus, loadError, load,
     };
   },
   template: `
-    <main class="container" v-if="fixture">
+    <main class="container" v-if="loadError && !fixture">
+      <p class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
+    </main>
+    <main class="container" v-else-if="fixture">
       <header style="text-align:center;">
         <h2 style="margin:0.25rem 0;">vs {{ fixture.opponent }} <span class="tag">{{ fixture.home_away }}</span></h2>
         <p style="opacity:0.7; margin:0;">{{ fixture.match_date }} <span v-if="fixture.kickoff">&middot; {{ fixture.kickoff }}</span></p>

@@ -5,6 +5,7 @@ import { listAvailabilityForDate } from "../api/availability.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
 import PlayerPicker from "../components/PlayerPicker.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "MatchdayView",
@@ -18,7 +19,7 @@ export default {
     const saving = ref(false);
     const savedAt = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       fixtures.value = await listFixturesOnDate(props.date);
       players.value = await listPlayers({ activeOnly: true });
 
@@ -33,7 +34,7 @@ export default {
         for (const a of apps) map[a.player_id] = a;
         rowsByFixture[f.id] = map;
       }
-    }
+    });
 
     // Players selected on more than one fixture today - shown as a helpful
     // "also playing for X" note, not a warning (playing twice is allowed).
@@ -85,11 +86,12 @@ export default {
     }
 
     onMounted(load);
-    return { fixtures, players, availability, rowsByFixture, otherMatchesByFixture, unselectedPlayers, playerDisplayName, saving, savedAt, onChange };
+    return { fixtures, players, availability, rowsByFixture, otherMatchesByFixture, unselectedPlayers, playerDisplayName, saving, savedAt, onChange, loadError, load };
   },
   template: `
     <main class="container">
       <h2>Matchday: {{ date }}</h2>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
       <p style="font-size:0.85rem; opacity:0.7;">
         Changes save automatically. <span v-if="saving">Saving...</span>
         <span v-else-if="savedAt">Saved {{ savedAt }}</span>

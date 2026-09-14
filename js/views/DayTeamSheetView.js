@@ -4,6 +4,7 @@ import { listAppearancesForFixture } from "../api/appearances.js";
 import { listPlayers } from "../api/players.js";
 import { store } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "DayTeamSheetView",
@@ -14,7 +15,7 @@ export default {
     const squadByFixture = ref({}); // fixture_id -> [{ id, name, goals, assists, potm }]
     const shareStatus = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       fixtures.value = await listFixturesOnDate(props.date);
       players.value = await listPlayers({ activeOnly: true });
       const byFixture = {};
@@ -32,7 +33,7 @@ export default {
           .sort((a, b) => a.name.localeCompare(b.name));
       }
       squadByFixture.value = byFixture;
-    }
+    });
 
     // Active-roster players not selected for any fixture today - the
     // "did I miss anyone" check. Coach-only: deliberately left out of
@@ -111,7 +112,7 @@ export default {
     onMounted(load);
     return {
       fixtures, squadByFixture, unselectedPlayers, clubName, playedFixtures, playerDisplayName,
-      share, shareResults, printSheet, shareStatus,
+      share, shareResults, printSheet, shareStatus, loadError, load,
     };
   },
   template: `
@@ -119,6 +120,7 @@ export default {
       <div class="club-header-band no-print" style="padding:0.75rem 1rem; margin-bottom:1rem;">
         <strong>{{ clubName }}</strong> matchday team sheets
       </div>
+      <p v-if="loadError" class="tag warn no-print">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
       <header style="display:flex; align-items:center; gap:0.75rem;">
         <img src="assets/badge.svg" style="height:3rem;" alt="badge" />
         <h3 style="margin:0;">{{ clubName }} &middot; {{ date }}</h3>

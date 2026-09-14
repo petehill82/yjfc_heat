@@ -4,6 +4,7 @@ import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.
 import { playerDisplayName } from "../lib/format.js";
 import { DEFAULT_GAME_MINUTES, DEFAULT_PLAYERS_ON_PITCH } from "../lib/matchFormat.js";
 import { store } from "../store.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "MatchStatsView",
@@ -15,7 +16,7 @@ export default {
     const saving = ref(false);
     const savedAt = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       fixture.value = await getFixture(props.id);
       const apps = (await listAppearancesForFixture(props.id)).filter((a) => a.selected);
       apps.sort((a, b) => (a.starting === b.starting ? 0 : a.starting ? -1 : 1));
@@ -25,7 +26,7 @@ export default {
       const playersOnPitch = season?.players_on_pitch ?? DEFAULT_PLAYERS_ON_PITCH;
       const fairShare = apps.length ? Math.round((playersOnPitch * gameMinutes) / apps.length) : 0;
       for (const a of apps) rows[a.player_id] = { ...a, minutes_played: a.minutes_played || fairShare };
-    }
+    });
 
     function playerName(pid) {
       return playerDisplayName(rows[pid].players);
@@ -82,10 +83,13 @@ export default {
     }
 
     onMounted(load);
-    return { fixture, rows, order, saving, savedAt, playerName, saveRow, removePlayer, setPotm, saveScore };
+    return { fixture, rows, order, saving, savedAt, playerName, saveRow, removePlayer, setPotm, saveScore, loadError, load };
   },
   template: `
-    <main class="container" v-if="fixture">
+    <main class="container" v-if="loadError && !fixture">
+      <p class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
+    </main>
+    <main class="container" v-else-if="fixture">
       <h2>Match stats vs {{ fixture.opponent }}</h2>
       <article>
         <div style="display:flex; gap:1rem; align-items:center;">

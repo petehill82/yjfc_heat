@@ -5,6 +5,7 @@ import { getClubSettings, updateClubSettings } from "../api/clubSettings.js";
 import { store, loadSeasons } from "../store.js";
 import { coachDisplayName } from "../lib/format.js";
 import { DEFAULT_GAME_MINUTES, DEFAULT_PLAYERS_ON_PITCH } from "../lib/matchFormat.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "AdminView",
@@ -18,11 +19,11 @@ export default {
     });
     const error = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       coaches.value = await listCoaches();
       seasons.value = await listSeasons();
       club.value = await getClubSettings();
-    }
+    });
 
     async function toggleRole(c) {
       const role = c.role === "admin" ? "coach" : "admin";
@@ -72,11 +73,12 @@ export default {
     }
 
     onMounted(load);
-    return { coaches, seasons, club, newSeason, error, coachDisplayName, toggleRole, saveCoach, addSeason, saveSeason, makeCurrent, saveClub };
+    return { coaches, seasons, club, newSeason, error, loadError, load, coachDisplayName, toggleRole, saveCoach, addSeason, saveSeason, makeCurrent, saveClub };
   },
   template: `
     <main class="container">
       <h2>Admin</h2>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
 
       <h3>Coaches</h3>
       <div style="overflow-x:auto;">

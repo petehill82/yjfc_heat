@@ -4,6 +4,7 @@ import { listCoaches } from "../api/profiles.js";
 import { store, isAdmin, currentSeason } from "../store.js";
 import { parseDelimited, normalizeDate, normalizeTime, normalizeHomeAway } from "../lib/csv.js";
 import { coachDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 const BLANK = { match_date: "", kickoff: "", team_name: "", opponent: "", home_away: "home", venue: "", competition: "", format: "", status: "scheduled", our_score: null, their_score: null, coach_ids: [] };
 
@@ -17,10 +18,10 @@ export default {
     const editingId = ref(null);
     const error = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       fixtures.value = await listFixtures({ seasonId: store.currentSeasonId });
       allCoaches.value = await listCoaches();
-    }
+    });
 
     const grouped = computed(() => {
       const byDate = {};
@@ -234,7 +235,7 @@ export default {
 
     onMounted(load);
     return {
-      fixtures, allCoaches, coachDisplayName, grouped, displayedGroups, showPast, pastGroups, pastFixtureCount,
+      fixtures, allCoaches, coachDisplayName, loadError, load, grouped, displayedGroups, showPast, pastGroups, pastFixtureCount,
       showForm, draft, editingId, error, isAdmin,
       startAdd, startEdit, cancelEdit, duplicateAsNewTeam, save, remove,
       showImport, importText, importHeaders, parsedRows, mapping, useHomeAwayColumns,
@@ -245,6 +246,7 @@ export default {
   template: `
     <main class="container">
       <h2>Fixtures</h2>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
         <button @click="startAdd" style="width:auto;">+ Add fixture</button>
         <button class="outline" @click="openImport" style="width:auto;">+ Import from file</button>

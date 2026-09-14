@@ -6,6 +6,7 @@ import { store, currentSeason } from "../store.js";
 import { playerSeasonStats, teamResults } from "../api/stats.js";
 import { listUpcomingFixtures } from "../api/fixtures.js";
 import StatTile from "../components/StatTile.js";
+import { useLoader } from "../lib/useLoader.js";
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Legend, Tooltip);
 
@@ -28,18 +29,27 @@ const GOOD = "#0ca30c";
 const CRITICAL = "#d03b3b";
 const NEUTRAL = "#898781";
 
-const BASE_OPTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  scales: {
-    x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
-    y: { grid: { color: GRID, drawTicks: false }, ticks: { color: INK_SECONDARY }, beginAtZero: true },
-  },
-  plugins: {
-    legend: { labels: { color: INK_SECONDARY, boxWidth: 12 } },
-    tooltip: { enabled: true },
-  },
-};
+// A function, not a shared object: every chart needs its OWN scales/plugins
+// objects. Chart.js writes internal bookkeeping onto the config objects you
+// hand it, so if two charts shared the same nested `scales` object (which a
+// shallow `{ ...BASE_OPTS, indexAxis: "y" }` spread does NOT copy), building
+// one chart could corrupt another's axis orientation - which is exactly the
+// bug this replaced (charts silently swapping between horizontal/vertical
+// bars depending on what else had been built before them).
+function baseOpts() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: { grid: { display: false }, ticks: { color: INK_SECONDARY } },
+      y: { grid: { color: GRID, drawTicks: false }, ticks: { color: INK_SECONDARY }, beginAtZero: true },
+    },
+    plugins: {
+      legend: { labels: { color: INK_SECONDARY, boxWidth: 12 } },
+      tooltip: { enabled: true },
+    },
+  };
+}
 
 export default {
   name: "DashboardView",
@@ -68,6 +78,18 @@ export default {
       for (const c of Object.values(charts)) c?.destroy();
     }
 
+    // Each chart built in isolation - one throwing (e.g. Chart.js's "canvas
+    // already in use" if a stale instance wasn't cleaned up) shouldn't be
+    // able to silently take the rest down with it, and if it does happen
+    // we'll get an exact, named error instead of just "some bars missing".
+    function safeBuild(name, fn) {
+      try {
+        fn();
+      } catch (e) {
+        console.error(`Dashboard chart "${name}" failed to build:`, e);
+      }
+    }
+
     function buildLeaderboard() {
       const top = [...players.value]
         .sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))
@@ -82,26 +104,28 @@ export default {
             { label: "Assists", data: top.map((p) => p.assists), backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, barThickness: 18, categoryPercentage: 0.7, barPercentage: 0.9 },
           ],
         },
-        options: { ...BASE_OPTS, indexAxis: "y" },
+        options: { ...baseOpts(), indexAxis: "y" },
       });
     }
 
     function buildMatchesPlayed() {
       const sorted = [...players.value].sort((a, b) => b.apps - a.apps);
       charts.matches?.destroy();
+      const opts = baseOpts();
       charts.matches = new Chart(matchesCanvas.value, {
         type: "bar",
         data: {
           labels: sorted.map((p) => chartLabel(p)),
           datasets: [{ label: "Matches played", data: sorted.map((p) => p.apps), backgroundColor: ORANGE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
-        options: { ...BASE_OPTS, indexAxis: "y", plugins: { ...BASE_OPTS.plugins, legend: { display: false } } },
+        options: { ...opts, indexAxis: "y", plugins: { ...opts.plugins, legend: { display: false } } },
       });
     }
 
     function buildPotm() {
       const sorted = [...players.value].sort((a, b) => b.potm_count - a.potm_count);
       charts.potm?.destroy();
+      const opts = baseOpts();
       charts.potm = new Chart(potmCanvas.value, {
         type: "bar",
         data: {
@@ -109,10 +133,10 @@ export default {
           datasets: [{ label: "POTM awards", data: sorted.map((p) => p.potm_count), backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
         options: {
-          ...BASE_OPTS,
+          ...opts,
           indexAxis: "y",
-          plugins: { ...BASE_OPTS.plugins, legend: { display: false } },
-          scales: { ...BASE_OPTS.scales, x: { ...BASE_OPTS.scales.x, ticks: { ...BASE_OPTS.scales.x.ticks, stepSize: 1 } } },
+          plugins: { ...opts.plugins, legend: { display: false } },
+          scales: { ...opts.scales, x: { ...opts.scales.x, ticks: { ...opts.scales.x.ticks, stepSize: 1 } } },
         },
       });
     }
@@ -123,13 +147,14 @@ export default {
       charts.goalkeeping?.destroy();
       charts.goalkeeping = null;
       if (!keepers.length) return;
+      const opts = baseOpts();
       charts.goalkeeping = new Chart(goalkeepingCanvas.value, {
         type: "bar",
         data: {
           labels: keepers.map((p) => chartLabel(p)),
           datasets: [{ label: "Minutes in goal", data: keepers.map((p) => p.minutes_in_goal), backgroundColor: AQUA, borderRadius: 4, borderSkipped: false, categoryPercentage: 0.7, barPercentage: 0.9 }],
         },
-        options: { ...BASE_OPTS, indexAxis: "y", plugins: { ...BASE_OPTS.plugins, legend: { display: false } } },
+        options: { ...opts, indexAxis: "y", plugins: { ...opts.plugins, legend: { display: false } } },
       });
     }
 
@@ -149,33 +174,42 @@ export default {
             { label: "Away", data: [t.wa, t.da, t.la], backgroundColor: BLUE, borderRadius: 4, borderSkipped: false, barThickness: 24, categoryPercentage: 0.6, barPercentage: 0.9 },
           ],
         },
-        options: BASE_OPTS,
+        options: baseOpts(),
       });
     }
 
-    async function load() {
+    // Sequential, not parallel (Promise.all/allSettled) - firing several
+    // Supabase requests at the exact same instant, right as the page loads
+    // and the auth session is still settling, risks one of them going out
+    // without a fully-attached auth token. RLS then just returns zero rows
+    // for that one query rather than an error, which looks identical to
+    // "no data yet" - silent and confusing. One at a time avoids the race.
+    const { error: loadError, run: load } = useLoader(async () => {
       const seasonId = store.currentSeasonId;
       if (!seasonId) return;
       players.value = await playerSeasonStats(seasonId);
       teams.value = await teamResults(seasonId);
       upcoming.value = await listUpcomingFixtures(5);
       await nextTick();
-      buildLeaderboard();
-      buildMatchesPlayed();
-      buildPotm();
-      buildGoalkeeping();
-      buildHomeAway();
-    }
+      safeBuild("leaderboard", buildLeaderboard);
+      safeBuild("matchesPlayed", buildMatchesPlayed);
+      safeBuild("potm", buildPotm);
+      safeBuild("goalkeeping", buildGoalkeeping);
+      safeBuild("homeAway", buildHomeAway);
+    });
 
     watch(() => store.currentSeasonId, load);
     onMounted(load);
     onBeforeUnmount(destroyCharts);
 
-    return { players, teams, upcoming, totals, leaderboardCanvas, matchesCanvas, potmCanvas, goalkeepingCanvas, homeAwayCanvas, store, currentSeason, GOOD, CRITICAL, NEUTRAL };
+    return { players, teams, upcoming, totals, loadError, load, leaderboardCanvas, matchesCanvas, potmCanvas, goalkeepingCanvas, homeAwayCanvas, store, currentSeason, GOOD, CRITICAL, NEUTRAL };
   },
   template: `
     <main class="container">
       <h2>Dashboard</h2>
+      <p v-if="loadError" class="tag warn">
+        {{ loadError }} <a href="#" @click.prevent="load">Retry</a>
+      </p>
       <label v-if="store.seasons.length > 1">Season
         <select v-model="store.currentSeasonId">
           <option v-for="s in store.seasons" :key="s.id" :value="s.id">{{ s.name }} - {{ s.squad_name }}</option>

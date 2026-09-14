@@ -2,6 +2,7 @@ import { ref, watch, onMounted } from "vue";
 import { store, currentSeason } from "../store.js";
 import { listResults } from "../api/results.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 function outcome(r) {
   if (r.our_score == null || r.their_score == null) return "";
@@ -15,20 +16,21 @@ export default {
   setup() {
     const results = ref([]);
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       const seasonId = store.currentSeasonId;
       if (!seasonId) return;
       results.value = await listResults(seasonId);
-    }
+    });
 
     watch(() => store.currentSeasonId, load);
     onMounted(load);
 
-    return { results, store, currentSeason, outcome, playerDisplayName };
+    return { results, store, currentSeason, outcome, playerDisplayName, loadError, load };
   },
   template: `
     <main class="container">
       <h2>Results</h2>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
       <label v-if="store.seasons.length > 1">Season
         <select v-model="store.currentSeasonId">
           <option v-for="s in store.seasons" :key="s.id" :value="s.id">{{ s.name }} - {{ s.squad_name }}</option>

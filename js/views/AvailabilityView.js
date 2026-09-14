@@ -3,6 +3,7 @@ import { listPlayers } from "../api/players.js";
 import { listUpcomingFixtures } from "../api/fixtures.js";
 import { listUpcomingAvailability, setAvailability, setAvailabilityBulk } from "../api/availability.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 const CYCLE = ["unknown", "available", "unavailable"];
 const LABEL = { unknown: "?", available: "\u2713", unavailable: "\u2717" };
@@ -16,7 +17,7 @@ export default {
     const grid = reactive({}); // `${playerId}|${date}` -> status
     const bulkBusy = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       players.value = await listPlayers({ activeOnly: true });
       const fixtures = await listUpcomingFixtures(20);
       dates.value = [...new Set(fixtures.map((f) => f.match_date))].sort();
@@ -25,7 +26,7 @@ export default {
       const to = dates.value[dates.value.length - 1];
       const rows = await listUpcomingAvailability(from, to);
       for (const r of rows) grid[`${r.player_id}|${r.on_date}`] = r.status;
-    }
+    });
 
     function statusFor(pid, date) {
       return grid[`${pid}|${date}`] || "unknown";
@@ -52,12 +53,13 @@ export default {
     }
 
     onMounted(load);
-    return { players, dates, statusFor, cycle, markAllAvailable, bulkBusy, LABEL, CLASS, playerDisplayName };
+    return { players, dates, statusFor, cycle, markAllAvailable, bulkBusy, LABEL, CLASS, playerDisplayName, loadError, load };
   },
   template: `
     <main class="container">
       <h2>Availability</h2>
-      <p v-if="!dates.length">No upcoming fixtures to mark availability for yet.</p>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
+      <p v-if="!dates.length && !loadError">No upcoming fixtures to mark availability for yet.</p>
       <div v-else style="overflow-x:auto;">
         <table>
           <thead>

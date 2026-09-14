@@ -1,5 +1,6 @@
 import { ref, computed, onMounted } from "vue";
 import { listUpcomingFixtures } from "../api/fixtures.js";
+import { useLoader } from "../lib/useLoader.js";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -12,28 +13,23 @@ export default {
   name: "TodayView",
   setup() {
     const fixtures = ref([]);
-    const loading = ref(true);
 
-    async function load() {
-      loading.value = true;
-      try {
-        fixtures.value = await listUpcomingFixtures(20);
-      } finally {
-        loading.value = false;
-      }
-    }
+    const { error: loadError, loading, run: load } = useLoader(async () => {
+      fixtures.value = await listUpcomingFixtures(20);
+    });
 
     const targetDate = computed(() => fixtures.value[0]?.match_date || null);
     const isToday = computed(() => targetDate.value === todayStr());
     const shown = computed(() => fixtures.value.filter((f) => f.match_date === targetDate.value));
 
     onMounted(load);
-    return { loading, targetDate, isToday, shown };
+    return { loading, loadError, load, targetDate, isToday, shown };
   },
   template: `
     <main class="container">
       <h2 style="margin-bottom:0;">{{ isToday ? "Today's match" : "Next match" }}{{ shown.length > 1 ? 'es' : '' }}</h2>
       <p v-if="targetDate" style="opacity:0.7; margin-top:0.15rem;">{{ targetDate }}</p>
+      <p v-if="loadError" class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
 
       <article v-for="f in shown" :key="f.id" :class="{ pitch: f.status === 'played' }">
         <header>

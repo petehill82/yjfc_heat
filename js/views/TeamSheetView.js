@@ -3,6 +3,7 @@ import { getFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture } from "../api/appearances.js";
 import { store } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "TeamSheetView",
@@ -12,17 +13,17 @@ export default {
     const appearances = ref([]);
     const shareStatus = ref("");
 
-    async function load() {
+    function playerName(a) {
+      return playerDisplayName(a.players);
+    }
+
+    const { error: loadError, run: load } = useLoader(async () => {
       fixture.value = await getFixture(props.id);
       const apps = await listAppearancesForFixture(props.id);
       appearances.value = apps
         .filter((a) => a.selected)
         .sort((a, b) => playerName(a).localeCompare(playerName(b)));
-    }
-
-    function playerName(a) {
-      return playerDisplayName(a.players);
-    }
+    });
 
     function asText() {
       const f = fixture.value;
@@ -51,10 +52,13 @@ export default {
     function printSheet() { window.print(); }
 
     onMounted(load);
-    return { fixture, appearances, playerName, share, printSheet, shareStatus, store };
+    return { fixture, appearances, playerName, share, printSheet, shareStatus, store, loadError, load };
   },
   template: `
-    <main class="container team-sheet" v-if="fixture">
+    <main class="container" v-if="loadError && !fixture">
+      <p class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
+    </main>
+    <main class="container team-sheet" v-else-if="fixture">
       <div class="club-header-band no-print" style="padding:0.75rem 1rem; margin-bottom:1rem;">
         <strong>{{ store.clubSettings.club_name }}</strong> team sheet
       </div>

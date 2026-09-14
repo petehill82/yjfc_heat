@@ -2,6 +2,7 @@ import { ref, onMounted } from "vue";
 import { getPlayer, updatePlayer, getPlayerSeasonStats, getPlayerAppearances } from "../api/players.js";
 import { store, isAdmin } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
+import { useLoader } from "../lib/useLoader.js";
 
 export default {
   name: "PlayerDetailView",
@@ -14,13 +15,13 @@ export default {
     const appearances = ref([]);
     const error = ref("");
 
-    async function load() {
+    const { error: loadError, run: load } = useLoader(async () => {
       player.value = await getPlayer(props.id);
       appearances.value = await getPlayerAppearances(props.id);
       if (store.currentSeasonId) {
         seasonStats.value = await getPlayerSeasonStats(props.id, store.currentSeasonId);
       }
-    }
+    });
 
     function startEdit() {
       draft.value = {
@@ -51,10 +52,14 @@ export default {
     }
 
     onMounted(load);
-    return { player, editing, draft, seasonStats, appearances, error, isAdmin, playerDisplayName, startEdit, save };
+    return { player, editing, draft, seasonStats, appearances, error, loadError, load, isAdmin, playerDisplayName, startEdit, save };
   },
   template: `
-    <main class="container" v-if="player">
+    <main class="container" v-if="loadError && !player">
+      <p><router-link to="/players">&larr; Back to squad</router-link></p>
+      <p class="tag warn">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
+    </main>
+    <main class="container" v-else-if="player">
       <p><router-link to="/players">&larr; Back to squad</router-link></p>
       <h2>{{ playerDisplayName(player) }}
         <span class="tag">#{{ player.squad_number ?? '-' }}</span>

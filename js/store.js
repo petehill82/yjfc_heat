@@ -20,18 +20,26 @@ export function currentSeason() {
 }
 
 export async function refreshAuth() {
-  const previousUserId = store.user?.id ?? null;
-  store.user = await getSessionUser();
-  store.profile = store.user ? await getMyProfile() : null;
-  store.ready = true;
+  // Must never throw - main.js waits on this before mounting the app at
+  // all, so an uncaught rejection here (e.g. a transient network blip on a
+  // phone) would leave the page permanently blank until a manual reload.
+  try {
+    const previousUserId = store.user?.id ?? null;
+    store.user = await getSessionUser();
+    store.profile = store.user ? await getMyProfile() : null;
 
-  // Load (or clear) squad-wide data whenever the signed-in user changes -
-  // covers first load, sign-in, sign-out and switching accounts.
-  if (store.user && store.user.id !== previousUserId) {
-    await Promise.all([loadSeasons(), loadClubSettings()]);
-  } else if (!store.user) {
-    store.seasons = [];
-    store.currentSeasonId = null;
+    // Load (or clear) squad-wide data whenever the signed-in user changes -
+    // covers first load, sign-in, sign-out and switching accounts.
+    if (store.user && store.user.id !== previousUserId) {
+      await Promise.all([loadSeasons(), loadClubSettings()]);
+    } else if (!store.user) {
+      store.seasons = [];
+      store.currentSeasonId = null;
+    }
+  } catch (e) {
+    console.error("refreshAuth failed:", e);
+  } finally {
+    store.ready = true;
   }
 }
 
