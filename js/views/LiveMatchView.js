@@ -1,4 +1,4 @@
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from "vue";
 import { getFixture, updateFixture } from "../api/fixtures.js";
 import { listAppearancesForFixture, upsertAppearance } from "../api/appearances.js";
 import { store } from "../store.js";
@@ -153,6 +153,80 @@ export default {
     });
     const fairMinutesOn = computed(() => order.value.length ? Math.round((matchFormat.value.playersOnPitch * matchFormat.value.gameMinutes) / order.value.length) : 0);
     const fairMinutesOff = computed(() => order.value.length ? matchFormat.value.gameMinutes - fairMinutesOn.value : 0);
+    const halfMinutes = computed(() => Math.round(matchFormat.value.gameMinutes / 2));
+
+    // Half-clock: a stopwatch for the current half, not a full countdown
+    // system. Elapsed time is always computed from wall-clock timestamps
+    // (accumulatedMs + now - startedAt), never by incrementing a counter per
+    // tick - so a phone screen locking/backgrounding the tab (which throttles
+    // or pauses JS timers) can't make the display drift; it just self-corrects
+    // to the true elapsed time the next time it updates. Persisted to
+    // localStorage per fixture so an accidental reload mid-match doesn't lose it.
+    const timerState = reactive({ half: 1, running: false, startedAt: null, accumulatedMs: 0 });
+    const nowTick = ref(Date.now());
+    let tickHandle = null;
+    const timerStorageKey = `liveTimer:${props.id}`;
+
+    function ensureTicking() {
+      if (tickHandle) return;
+      tickHandle = setInterval(() => { nowTick.value = Date.now(); }, 1000);
+    }
+    function stopTicking() {
+      if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+    }
+
+    function saveTimerState() {
+      try { localStorage.setItem(timerStorageKey, JSON.stringify(timerState)); } catch { /* private mode etc. - just don't persist */ }
+    }
+    function loadTimerState() {
+      try {
+        const raw = localStorage.getItem(timerStorageKey);
+        if (!raw) return;
+        Object.assign(timerState, JSON.parse(raw));
+        if (timerState.running) ensureTicking();
+      } catch { /* ignore corrupt/missing state */ }
+    }
+
+    const elapsedMs = computed(() => {
+      const running = timerState.running && timerState.startedAt
+        ? nowTick.value - timerState.startedAt
+        : 0;
+      return timerState.accumulatedMs + running;
+    });
+    const elapsedLabel = computed(() => {
+      const totalSec = Math.max(0, Math.floor(elapsedMs.value / 1000));
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    });
+    const halfTimeReached = computed(() => elapsedMs.value / 60000 >= halfMinutes.value);
+
+    function startTimer() {
+      timerState.startedAt = Date.now();
+      timerState.running = true;
+      ensureTicking();
+      saveTimerState();
+    }
+    function pauseTimer() {
+      if (timerState.startedAt) timerState.accumulatedMs += Date.now() - timerState.startedAt;
+      timerState.startedAt = null;
+      timerState.running = false;
+      stopTicking();
+      saveTimerState();
+    }
+    function resetHalfTimer() {
+      timerState.accumulatedMs = 0;
+      timerState.startedAt = timerState.running ? Date.now() : null;
+      saveTimerState();
+    }
+    function startSecondHalf() {
+      timerState.half = 2;
+      timerState.accumulatedMs = 0;
+      timerState.startedAt = Date.now();
+      timerState.running = true;
+      ensureTicking();
+      saveTimerState();
+    }
 
     // WhatsApp-friendly result report - score, scorers, assists, POTM.
     const reportStatus = ref("");
@@ -195,10 +269,13 @@ export default {
       setTimeout(() => (reportStatus.value = ""), 4000);
     }
 
-    onMounted(load);
+    onMounted(() => { load(); loadTimerState(); });
+    onBeforeUnmount(stopTicking);
     return {
       fixture, rows, order, saving, savedAt, playerName, squadNum,
       step, pendingScorerPid, lastGoal, lastGoalLabel, scorers, fairMinutesOn, fairMinutesOff,
+      halfMinutes, timerState, elapsedLabel, halfTimeReached,
+      startTimer, pauseTimer, resetHalfTimer, startSecondHalf,
       startGoal, cancelGoal, pickScorer, finishGoal, addOppositionGoal, undoLastGoal,
       setPotm, markFullTime, shareReport, reportStatus, loadError, load,
     };
@@ -223,6 +300,22 @@ export default {
           <span class="live-score-label">{{ fixture.opponent }}</span>
           <div class="live-score-value">{{ fixture.their_score ?? 0 }}</div>
           <button class="live-goal-btn secondary" @click="addOppositionGoal">+ GOAL</button>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin:0.5rem 0;">
+        <div style="font-family:var(--font-display); font-size:2.25rem; font-weight:600;" :style="{ color: timerState.running ? 'var(--club-orange-dark)' : 'var(--ink)' }">
+          {{ elapsedLabel }}
+        </div>
+        <p style="font-size:0.8rem; opacity:0.7; margin:0.1rem 0 0.4rem;">
+          {{ timerState.half === 1 ? '1st half' : '2nd half' }} &middot; target {{ halfMinutes }} min
+          <span v-if="halfTimeReached" class="tag warn">Half time reached</span>
+        </p>
+        <div style="display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap;">
+          <button v-if="!timerState.running" type="button" style="width:auto;" @click="startTimer">&#9654; Start</button>
+          <button v-else type="button" class="secondary" style="width:auto;" @click="pauseTimer">&#10074;&#10074; Pause</button>
+          <button type="button" class="outline" style="width:auto;" @click="resetHalfTimer">Reset</button>
+          <button v-if="timerState.half === 1" type="button" class="outline" style="width:auto;" @click="startSecondHalf">Start 2nd half</button>
         </div>
       </div>
 
