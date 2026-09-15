@@ -14,23 +14,31 @@ body {
 .app-header .club-title { font-weight: 700; margin: 0; line-height: 1.1; }
 .app-header .club-title small { display: block; font-weight: 400; opacity: 0.85; font-size: 0.75rem; }
 
-/* Bottom nav bar for phones; becomes a top nav on wide screens */
+/* Bottom nav bar for phones; becomes a top nav on wide screens.
+   Scrolls horizontally rather than squeezing items to fit - with enough
+   items (Home/Today/Players/Fixtures/Results/Avail./Admin/Profile/Sign out)
+   equal-share flex items got too narrow to read, and there was no way to
+   reach the ones pushed off the edge. flex: 0 0 auto + overflow-x lets each
+   item keep a legible minimum width and just scrolls instead. */
 .bottom-nav {
   position: fixed;
   left: 0; right: 0; bottom: 0;
   display: flex;
-  justify-content: space-around;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--pico-card-background-color, #fff);
   border-top: 1px solid var(--pico-muted-border-color);
   padding: 0.4rem 0;
   z-index: 20;
 }
 .bottom-nav a {
+  flex: 0 0 auto;
+  min-width: 3.75rem;
+  padding: 0 0.4rem;
   font-size: 0.7rem;
   text-decoration: none;
   text-align: center;
   color: var(--pico-color);
-  flex: 1;
 }
 .bottom-nav a.router-link-active { color: var(--club-orange-dark); font-weight: 700; }
 
