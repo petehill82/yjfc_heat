@@ -39,6 +39,7 @@ export default {
       <router-link to="/today">⚽<br>Today</router-link>
       <router-link to="/players">👥<br>Players</router-link>
       <router-link to="/fixtures">📅<br>Fixtures</router-link>
+      <router-link to="/results">🏆<br>Results</router-link>
       <router-link to="/availability">✅<br>Avail.</router-link>
       <router-link v-if="isAdmin()" to="/admin">⚙️<br>Admin</router-link>
       <router-link to="/set-password">🔑<br>Profile</router-link>
