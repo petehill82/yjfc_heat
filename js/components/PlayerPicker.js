@@ -59,14 +59,14 @@ export default {
     <div>
       <p style="font-size:0.85rem; opacity:0.75; margin-bottom:0.25rem;">{{ selectedCount }} / {{ players.length }} selected</p>
       <div v-for="p in availablePlayers" :key="p.id" class="player-row">
-        <label style="display:flex; align-items:center; gap:0.5rem; flex:1;">
+        <label style="display:flex; align-items:center; gap:0.5rem; flex:1; flex-wrap:wrap;">
           <input type="checkbox" :checked="row(p).selected" @change="toggle(p)" />
           <span class="num">{{ p.squad_number ?? '-' }}</span>
-          <span>{{ playerDisplayName(p) }}</span>
-          <span v-if="(otherMatches[p.id] || []).length" class="tag">
+          <span :class="{ 'picked-elsewhere': (otherMatches[p.id] || []).length }" style="white-space:nowrap;">{{ playerDisplayName(p) }}</span>
+          <span v-if="availTag(p)" :class="['tag', availTag(p).cls]">{{ availTag(p).text }}</span>
+          <span v-if="row(p).selected && (otherMatches[p.id] || []).length" class="tag" style="flex-basis:100%; margin-left:1.85rem;">
             Also playing: {{ otherMatches[p.id].join(', ') }}
           </span>
-          <span v-if="availTag(p)" :class="['tag', availTag(p).cls]">{{ availTag(p).text }}</span>
         </label>
       </div>
 

@@ -61,6 +61,10 @@ body {
 
 .player-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); }
 .player-row:last-child { border-bottom: none; }
+/* Player already picked on another of today's fixtures - lighten the name so
+   it's easy to spot at a glance who's still free, without needing to read
+   the "Also playing" tag on every row. */
+.player-row .picked-elsewhere { opacity: 0.4; }
 .tag { display: inline-block; padding: 0.05rem 0.6rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: var(--club-orange-light); color: var(--club-orange-dark); }
 .tag.warn { background: var(--status-warn-bg); color: var(--status-warn); }
 .tag.ok { background: var(--status-good-bg); color: var(--status-good); }

@@ -3,6 +3,7 @@ import { getPlayer, updatePlayer, getPlayerSeasonStats, getPlayerAppearances } f
 import { store, isAdmin } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
 import { useLoader } from "../lib/useLoader.js";
+import { POSITIONS } from "../lib/positions.js";
 
 export default {
   name: "PlayerDetailView",
@@ -26,7 +27,7 @@ export default {
     function startEdit() {
       draft.value = {
         ...player.value,
-        preferred_positions: (player.value.preferred_positions || []).join(", "),
+        preferred_positions: [...(player.value.preferred_positions || [])],
       };
       editing.value = true;
     }
@@ -39,9 +40,6 @@ export default {
           squad_number: draft.value.squad_number ? Number(draft.value.squad_number) : null,
           ability: draft.value.ability ? Number(draft.value.ability) : null,
           year_of_birth: draft.value.year_of_birth ? Number(draft.value.year_of_birth) : null,
-          preferred_positions: draft.value.preferred_positions
-            ? draft.value.preferred_positions.split(",").map((s) => s.trim()).filter(Boolean)
-            : [],
         };
         delete patch.id; delete patch.created_at;
         player.value = await updatePlayer(props.id, patch);
@@ -52,7 +50,7 @@ export default {
     }
 
     onMounted(load);
-    return { player, editing, draft, seasonStats, appearances, error, loadError, load, isAdmin, playerDisplayName, startEdit, save };
+    return { player, editing, draft, seasonStats, appearances, error, loadError, load, isAdmin, playerDisplayName, startEdit, save, POSITIONS };
   },
   template: `
     <main class="container" v-if="loadError && !player">
@@ -79,7 +77,9 @@ export default {
           <input v-model="draft.squad_number" type="number" placeholder="Squad no." />
           <input v-model="draft.ability" type="number" min="1" max="10" placeholder="Ability (1-10)" />
           <input v-model="draft.year_of_birth" type="number" placeholder="Year of birth" />
-          <input v-model="draft.preferred_positions" placeholder="Positions (comma sep.)" />
+          <select v-model="draft.preferred_positions" multiple size="5" title="Positions (ctrl/cmd-click for multiple)">
+            <option v-for="pos in POSITIONS" :key="pos" :value="pos">{{ pos }}</option>
+          </select>
         </div>
         <textarea v-model="draft.notes" placeholder="Notes"></textarea>
         <p v-if="error" style="color:#b91c1c;">{{ error }}</p>

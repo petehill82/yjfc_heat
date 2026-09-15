@@ -4,8 +4,9 @@ import { playerSeasonStats } from "../api/stats.js";
 import { store, isAdmin, currentSeason } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
 import { useLoader } from "../lib/useLoader.js";
+import { POSITIONS } from "../lib/positions.js";
 
-const BLANK_PLAYER = { first_name: "", last_name: "", display_name: "", squad_number: null, ability: null, year_of_birth: null, preferred_positions: "" };
+const BLANK_PLAYER = { first_name: "", last_name: "", display_name: "", squad_number: null, ability: null, year_of_birth: null, preferred_positions: [] };
 const BLANK_STATS = { apps: 0, goals: 0, assists: 0, potm_count: 0 };
 
 export default {
@@ -78,9 +79,6 @@ export default {
           squad_number: newPlayer.value.squad_number ? Number(newPlayer.value.squad_number) : null,
           ability: newPlayer.value.ability ? Number(newPlayer.value.ability) : null,
           year_of_birth: newPlayer.value.year_of_birth ? Number(newPlayer.value.year_of_birth) : null,
-          preferred_positions: newPlayer.value.preferred_positions
-            ? newPlayer.value.preferred_positions.split(",").map((s) => s.trim()).filter(Boolean)
-            : [],
         };
         await createPlayer(payload);
         newPlayer.value = { ...BLANK_PLAYER };
@@ -99,7 +97,7 @@ export default {
     watch(() => store.currentSeasonId, load);
     onMounted(load);
     return {
-      players, filtered, search, showArchived, showAdd, newPlayer, error, loadError, isAdmin,
+      players, filtered, search, showArchived, showAdd, newPlayer, error, loadError, isAdmin, POSITIONS,
       playerDisplayName, statsFor, sortBy, sortIndicator, store, currentSeason, addPlayer, toggleArchive, load,
     };
   },
@@ -129,7 +127,9 @@ export default {
             <input v-model="newPlayer.squad_number" type="number" placeholder="Squad no." />
             <input v-model="newPlayer.ability" type="number" min="1" max="10" placeholder="Ability (1-10)" />
             <input v-model="newPlayer.year_of_birth" type="number" placeholder="Year of birth" />
-            <input v-model="newPlayer.preferred_positions" placeholder="Positions (comma sep.)" />
+            <select v-model="newPlayer.preferred_positions" multiple size="5" title="Positions (ctrl/cmd-click for multiple)">
+              <option v-for="pos in POSITIONS" :key="pos" :value="pos">{{ pos }}</option>
+            </select>
           </div>
           <p v-if="error" style="color:#b91c1c;">{{ error }}</p>
           <button type="submit">Save player</button>

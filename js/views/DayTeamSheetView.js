@@ -5,6 +5,19 @@ import { listPlayers } from "../api/players.js";
 import { store } from "../store.js";
 import { playerDisplayName } from "../lib/format.js";
 import { useLoader } from "../lib/useLoader.js";
+import { POSITIONS } from "../lib/positions.js";
+
+// Sort key for a player's preferred positions: their earliest (most senior)
+// position in POSITIONS order, e.g. a DEF/MID player sorts with defenders.
+// Players with no position set sort last.
+function positionRank(positions) {
+  let best = POSITIONS.length;
+  for (const pos of positions || []) {
+    const idx = POSITIONS.indexOf(pos);
+    if (idx !== -1 && idx < best) best = idx;
+  }
+  return best;
+}
 
 export default {
   name: "DayTeamSheetView",
@@ -14,6 +27,8 @@ export default {
     const players = ref([]);
     const squadByFixture = ref({}); // fixture_id -> [{ id, name, goals, assists, potm }]
     const shareStatus = ref("");
+    const sharingImage = ref(false);
+    const captureEl = ref(null); // wraps just the header + team cards, for the shared/downloaded image
 
     const { error: loadError, run: load } = useLoader(async () => {
       fixtures.value = await listFixturesOnDate(props.date);
@@ -26,11 +41,12 @@ export default {
           .map((a) => ({
             id: a.player_id,
             name: playerDisplayName(a.players),
+            positions: a.players?.preferred_positions || [],
             goals: a.goals,
             assists: a.assists,
             potm: a.potm,
           }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+          .sort((a, b) => positionRank(a.positions) - positionRank(b.positions) || a.name.localeCompare(b.name));
       }
       squadByFixture.value = byFixture;
     });
@@ -109,10 +125,46 @@ export default {
 
     function printSheet() { window.print(); }
 
+    // Renders the header + team cards to a PNG and shares it as an image
+    // (WhatsApp shows a proper image preview instead of a wall of text).
+    // Falls back to downloading the PNG on browsers without native file
+    // sharing (most desktops), so it can still be attached manually.
+    async function shareImage() {
+      if (!captureEl.value) return;
+      sharingImage.value = true;
+      shareStatus.value = "";
+      try {
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(captureEl.value, { backgroundColor: "#ffffff", scale: 2 });
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!blob) throw new Error("Could not generate image");
+        const file = new File([blob], `team-sheet-${props.date}.png`, { type: "image/png" });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: `${clubName.value} - Matchday ${props.date}` });
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        shareStatus.value = "Image downloaded - attach it in WhatsApp.";
+        setTimeout(() => (shareStatus.value = ""), 4000);
+      } catch (e) {
+        if (e?.name !== "AbortError") shareStatus.value = "Couldn't create the image: " + e.message;
+      } finally {
+        sharingImage.value = false;
+      }
+    }
+
     onMounted(load);
     return {
       fixtures, squadByFixture, unselectedPlayers, clubName, playedFixtures, playerDisplayName,
-      share, shareResults, printSheet, shareStatus, loadError, load,
+      share, shareResults, shareImage, sharingImage, captureEl, printSheet, shareStatus, loadError, load,
     };
   },
   template: `
@@ -121,29 +173,32 @@ export default {
         <strong>{{ clubName }}</strong> matchday team sheets
       </div>
       <p v-if="loadError" class="tag warn no-print">{{ loadError }} <a href="#" @click.prevent="load">Retry</a></p>
-      <header style="display:flex; align-items:center; gap:0.75rem;">
-        <img src="assets/badge.svg" style="height:3rem;" alt="badge" />
-        <h3 style="margin:0;">{{ clubName }} &middot; {{ date }}</h3>
-      </header>
 
-      <div class="matchday-columns">
-        <article v-for="f in fixtures" :key="f.id" class="day-sheet-match" :class="{ pitch: f.status === 'played' }">
-          <header>
-            <strong>{{ f.team_name || 'Team' }}</strong> vs {{ f.opponent }}
-            <span class="tag">{{ f.home_away === 'home' ? 'Home' : 'Away' }}</span>
-            <span class="tag">{{ (squadByFixture[f.id] || []).length }} selected</span>
-          </header>
-          <p style="font-size:0.85rem; opacity:0.75;">
-            <span v-if="f.kickoff">{{ f.kickoff }} &middot; </span>{{ f.venue }}
-          </p>
-          <p v-if="(f.coaches || []).length" style="font-size:0.85rem; opacity:0.75;">Coaches: {{ f.coaches.join(', ') }}</p>
-          <ul>
-            <li v-for="p in (squadByFixture[f.id] || [])" :key="p.id">{{ p.name }}</li>
-          </ul>
-          <p v-if="!(squadByFixture[f.id] || []).length" style="font-size:0.85rem; opacity:0.7;">No squad selected yet.</p>
-        </article>
+      <div ref="captureEl" style="background:#fff;">
+        <header style="display:flex; align-items:center; gap:0.75rem;">
+          <img src="assets/badge.svg" style="height:3rem;" alt="badge" />
+          <h3 style="margin:0;">{{ clubName }} &middot; {{ date }}</h3>
+        </header>
+
+        <div class="matchday-columns">
+          <article v-for="f in fixtures" :key="f.id" class="day-sheet-match" :class="{ pitch: f.status === 'played' }">
+            <header>
+              <strong>{{ f.team_name || 'Team' }}</strong> vs {{ f.opponent }}
+              <span class="tag">{{ f.home_away === 'home' ? 'Home' : 'Away' }}</span>
+              <span class="tag">{{ (squadByFixture[f.id] || []).length }} selected</span>
+            </header>
+            <p style="font-size:0.85rem; opacity:0.75;">
+              <span v-if="f.kickoff">{{ f.kickoff }} &middot; </span>{{ f.venue }}
+            </p>
+            <p v-if="(f.coaches || []).length" style="font-size:0.85rem; opacity:0.75;">Coaches: {{ f.coaches.join(', ') }}</p>
+            <ul>
+              <li v-for="p in (squadByFixture[f.id] || [])" :key="p.id">{{ p.name }}</li>
+            </ul>
+            <p v-if="!(squadByFixture[f.id] || []).length" style="font-size:0.85rem; opacity:0.7;">No squad selected yet.</p>
+          </article>
+        </div>
+        <p v-if="!fixtures.length">No fixtures scheduled on this date.</p>
       </div>
-      <p v-if="!fixtures.length">No fixtures scheduled on this date.</p>
 
       <article v-if="unselectedPlayers.length" class="no-print" style="border-top-color: var(--status-warn); margin-top:1rem;">
         <strong>{{ unselectedPlayers.length }} not selected for any fixture today</strong>
@@ -152,7 +207,8 @@ export default {
 
       <div class="no-print" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1rem;">
         <button style="width:auto;" @click="printSheet">Print / Save as PDF</button>
-        <button class="secondary" style="width:auto;" @click="share">Share team sheet</button>
+        <button class="secondary" style="width:auto;" @click="share">Share as text</button>
+        <button class="secondary" style="width:auto;" :aria-busy="sharingImage" @click="shareImage">Share as image</button>
         <button v-if="playedFixtures.length" class="secondary" style="width:auto;" @click="shareResults">Share results</button>
       </div>
       <p v-if="shareStatus" class="no-print">{{ shareStatus }}</p>

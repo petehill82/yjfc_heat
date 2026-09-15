@@ -36,8 +36,10 @@ export default {
       }
     });
 
-    // Players selected on more than one fixture today - shown as a helpful
-    // "also playing for X" note, not a warning (playing twice is allowed).
+    // Players selected on another of today's fixtures - shown as a helpful
+    // "also playing for X" note (and a lighter name) on every fixture's list,
+    // not just the ones they're ticked on, so a coach can see at a glance
+    // who's already spoken for elsewhere. Not a warning - playing twice is allowed.
     const otherMatchesByFixture = computed(() => {
       const label = (f) => f.team_name || f.opponent;
       const matchesByPlayer = {};
@@ -49,12 +51,10 @@ export default {
       }
       const result = {};
       for (const f of fixtures.value) {
-        const rows = rowsByFixture[f.id] || {};
         const others = {};
-        for (const [pid, row] of Object.entries(rows)) {
-          if (!row.selected) continue;
-          const rest = (matchesByPlayer[pid] || []).filter((other) => other.id !== f.id);
-          if (rest.length) others[pid] = rest.map(label);
+        for (const p of players.value) {
+          const rest = (matchesByPlayer[p.id] || []).filter((other) => other.id !== f.id);
+          if (rest.length) others[p.id] = rest.map(label);
         }
         result[f.id] = others;
       }
