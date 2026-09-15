@@ -26,7 +26,7 @@ export default {
     watch(() => store.currentSeasonId, load);
     onMounted(load);
 
-    // Tap a result row to expand its scorers/assists inline, fetched lazily
+    // Tap a result card to expand its scorers/assists inline, fetched lazily
     // (only the appearances for that one fixture) and cached so re-tapping
     // an already-viewed match doesn't re-fetch.
     const expandedId = ref(null);
@@ -76,46 +76,55 @@ export default {
         </select>
       </label>
 
-      <table>
-        <thead>
-          <tr><th>Date</th><th>Opponent</th><th>H/A</th><th>Score</th><th>Result</th><th>POTM</th><th></th></tr>
-        </thead>
-        <tbody>
-          <template v-for="r in results" :key="r.fixture_id">
-            <tr style="cursor:pointer;" @click="toggleDetails(r.fixture_id)">
-              <td>{{ r.match_date }}</td>
-              <td>{{ r.opponent }} <small v-if="r.team_name">({{ r.team_name }})</small></td>
-              <td>{{ r.home_away }}</td>
-              <td>{{ r.our_score }}&ndash;{{ r.their_score }}</td>
-              <td>
-                <span v-if="outcome(r) === 'W'" class="tag ok">Win</span>
-                <span v-else-if="outcome(r) === 'L'" class="tag warn">Loss</span>
-                <span v-else class="tag">Draw</span>
-              </td>
-              <td>
-                <router-link v-if="r.potm_player_id" :to="'/players/' + r.potm_player_id" @click.stop>
-                  {{ playerDisplayName({ first_name: r.potm_first_name, last_name: r.potm_last_name, display_name: r.potm_display_name }) }}
-                </router-link>
-                <span v-else style="opacity:0.6;">&ndash;</span>
-              </td>
-              <td style="opacity:0.6;">{{ expandedId === r.fixture_id ? '▾' : '▸' }}</td>
+      <div style="overflow-x:auto; margin-top:1rem;">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-opponent">Opponent</th>
+              <th class="col-score">Score</th>
+              <th class="col-potm">POTM</th>
+              <th class="col-result">Result</th>
             </tr>
-            <tr v-if="expandedId === r.fixture_id">
-              <td colspan="7" style="background:var(--chalk);">
-                <p v-if="detailsLoading === r.fixture_id" aria-busy="true">Loading...</p>
-                <p v-else-if="detailsError" class="tag warn">{{ detailsError }}</p>
-                <template v-else>
-                  <p v-if="scorersFor(r.fixture_id).length" style="margin:0.25rem 0;"><strong>&#9917; Scorers:</strong> {{ scorersFor(r.fixture_id).join(', ') }}</p>
-                  <p v-if="assistsFor(r.fixture_id).length" style="margin:0.25rem 0;"><strong>&#127939; Assists:</strong> {{ assistsFor(r.fixture_id).join(', ') }}</p>
-                  <p v-if="!scorersFor(r.fixture_id).length && !assistsFor(r.fixture_id).length" style="opacity:0.7; margin:0.25rem 0;">
-                    No goals or assists recorded for this match.
-                  </p>
-                </template>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <template v-for="r in results" :key="r.fixture_id">
+              <tr class="results-row" :class="{ expanded: expandedId === r.fixture_id }" @click="toggleDetails(r.fixture_id)">
+                <td class="col-date">{{ r.match_date }}</td>
+                <td class="col-opponent">
+                  {{ r.home_away === 'home' ? '' : '@ ' }}{{ r.opponent }}
+                  <small v-if="r.team_name">({{ r.team_name }})</small>
+                </td>
+                <td class="col-score"><span class="scoreline compact">{{ r.our_score }}<span class="vs">&ndash;</span>{{ r.their_score }}</span></td>
+                <td class="col-potm">
+                  <router-link v-if="r.potm_player_id" :to="'/players/' + r.potm_player_id" @click.stop>
+                    {{ playerDisplayName({ first_name: r.potm_first_name, last_name: r.potm_last_name, display_name: r.potm_display_name }) }}
+                  </router-link>
+                  <span v-else>&ndash;</span>
+                </td>
+                <td class="col-result">
+                  <span v-if="outcome(r) === 'W'" class="tag ok">W</span>
+                  <span v-else-if="outcome(r) === 'L'" class="tag warn">L</span>
+                  <span v-else class="tag">D</span>
+                </td>
+              </tr>
+              <tr v-if="expandedId === r.fixture_id" class="results-detail-row">
+                <td colspan="5">
+                  <p v-if="detailsLoading === r.fixture_id" aria-busy="true">Loading...</p>
+                  <p v-else-if="detailsError" class="tag warn">{{ detailsError }}</p>
+                  <template v-else>
+                    <p v-if="scorersFor(r.fixture_id).length" style="margin:0.25rem 0; font-size:0.9rem;"><strong>&#9917; Scorers:</strong> {{ scorersFor(r.fixture_id).join(', ') }}</p>
+                    <p v-if="assistsFor(r.fixture_id).length" style="margin:0.25rem 0; font-size:0.9rem;"><strong>&#127939; Assists:</strong> {{ assistsFor(r.fixture_id).join(', ') }}</p>
+                    <p v-if="!scorersFor(r.fixture_id).length && !assistsFor(r.fixture_id).length" style="opacity:0.7; margin:0.25rem 0; font-size:0.9rem;">
+                      No goals or assists recorded for this match.
+                    </p>
+                  </template>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
       <p v-if="!results.length">No results recorded yet this season.</p>
     </main>
   `,
